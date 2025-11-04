@@ -1,0 +1,7 @@
+"id"	"title"	"image_url"	"publish_at"	"created_at"
+"1"	"""Başkentin Parlayan Yıldızı"" Atatürk Sanat Merkezi Açıldı"	"https://www.cankaya.bel.tr/uploads/images/2400px1200pxweb-banner_1761036607_pozuUYYa.webp"	"21/10/2025 00:00:00"	"23/10/2025 09:20:50"
+"2"	"Çankaya Belediyesi Cumhuriyetin 102. Yılını Sanatla Kutluyor"	"https://www.cankaya.bel.tr/uploads/images/ASM_SON_1761031827_gCbBfz1a.webp"	"20/10/2025 00:00:00"	"23/10/2025 09:20:50"
+"3"	"""Zamanın Renkleri"" Sergisi Sanatseverlerle Buluştu"	"https://www.cankaya.bel.tr/uploads/images/ZAMANIN_RENKLERI___SLIDER-2_1759228491_Dsdr8vKP.webp"	"17/10/2025 00:00:00"	"23/10/2025 09:20:50"
+"4"	"Çankaya’da Cumhuriyetin Işığıyla: Kız Öğrenci Yurdu Açıldı"	"https://www.cankaya.bel.tr/uploads/images/kiz_yurdu28092025z_1759044439_rBfNQnLS.webp"	"17/10/2025 00:00:00"	"23/10/2025 09:58:57"
+"5"	"Çankaya’nın İlk Emekli Lokali Hizmete Girdi"	"https://www.cankaya.bel.tr/uploads/images/emekli_lokali_slider-son_1757916748_nQYBoTup.webp"		"23/10/2025 11:25:55"
+"6"	"""Gençlik Sofrası"" 1 Ekim'de Yeniden Kuruluyor"	"https://www.cankaya.bel.tr/uploads/images/YEMEK-web-Banner_1759145236_S7zfzysW.webp"		"23/10/2025 11:26:17"

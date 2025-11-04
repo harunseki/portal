@@ -1,0 +1,5 @@
+"id"	"adi"	"url"	"photo"	"db_name"	"ldap_method"	"table_name"	"kolon_tc"	"kolon_username"	"kolon_adi"	"kolon_soyadi"	"kolon_cepno"	"kolon_eposta"	"kolon_yetkili_durumu"	"aktif"	"yapim_yili"
+"1"	"EBYS"	"https://ebys.cankaya.bel.tr/enVision/Login.aspx"	"ebys.png"	"ebys"	"bim_takip_login"	"yetkili"	"tc"	"username"	"adi"	"soyadi"	"cepno"	"eposta"	"yetkili_durumu"	"1"	"2025"
+"2"	"FLEXCITY"	"https://ybscanli.cankaya.bel.tr:8071/cas/login?service=https%3A%2F%2Fybscanli.cankaya.bel.tr%2FFlexCityUi%2Fj_spring_cas_security_check"	"flexitylogo.png"	"flexity"	"kurs_merkezi_login"	"yetkili"	"tc"	"username"	"adi"	"soyadi"	"cepno"	"eposta"	"yetkili_durumu"	"1"	"2025"
+"3"	"KENT REHBERİ"	"https://kentrehberi.cankaya.bel.tr/Harita"	"cankaya.png"	"flexity"	"kurs_merkezi_login"	"yetkili"	"tc"	"username"	"adi"	"soyadi"	"cepno"	"eposta"	"yetkili_durumu"	"1"	"2025"
+"5"	"DİJİTAL"	"https://dijital.cankaya.bel.tr/"	"dijital.jpg"		"dijital_login"	"yetkili"	"tc"	"username"	"adi"	"soyadi"	"cepno"	"eposta"	"yetkili_durumu"		

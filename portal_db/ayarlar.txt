@@ -1,0 +1,2 @@
+"id"	"site_baslik"	"alt_baslik"	"aciklama"	"footer"	"kanun"	"image"	"adres"	"iletisim"	"email"	"logo"	"fb_adres"	"insta_adres"	"twitter_adres"	"youtube_adres"	"dosya_adres"	"update_yetkili"	"update_tarihi"	"kayit_yetkili"	"kayit_tarihi"	"bakim"
+"1"	"Bilgi İşlem Takip"																"27/6/2025 09:30:52"		"27/6/2025 09:30:52"	

@@ -1,0 +1,1 @@
+"id"	"baslik"	"dosya"	"kayit_tarihi"	"kayit_yetkili"	"update_tarihi"	"update_yetkili"	"durum"
