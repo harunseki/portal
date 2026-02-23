@@ -25,7 +25,7 @@ $q_erisim_kontrol=$dba->query("SELECT yetkili.id, yetkili.tc
 							   WHERE id=".admin_id());
 $row_erisim_kontrol=$dba->fetch_assoc($q_erisim_kontrol);
 
-require_once($_SERVER['DOCUMENT_ROOT']."/kent_konseyi/class/login_kontrol1.php");
+require_once($_SERVER['DOCUMENT_ROOT'] . "/cankayakentkonseyi/class/login_kontrol1.php");
 $erisim_durumu="";
 $erisim_durumu=$login_kontrol->erisim_kontrol(uygulama_id(),1,$row_erisim_kontrol['tc']);
 

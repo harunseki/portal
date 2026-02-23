@@ -1,6 +1,5 @@
 <?php
 require_once("class/functions.php");
-
 function generatePassword() {
     $upper   = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     $lower   = 'abcdefghijklmnopqrstuvwxyz';

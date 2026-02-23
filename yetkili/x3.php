@@ -16,14 +16,11 @@ if (!empty($_GET['edit'])) {
         $mail = $purifier->purify(rescape($_POST['mail']));
         $telephonenumber = $purifier->purify(rescape($_POST['telephonenumber']));
         $ipphone = $purifier->purify(rescape($_POST['ipphone']));
+        $facsimiletelephonenumber = $purifier->purify(rescape($_POST['facsimiletelephonenumber']));
         $info = $purifier->purify(rescape($_POST['info']));
         $department = $purifier->purify(rescape($_POST['department']));
 
         $hata = [];
-        /*if (empty($ldap_username)) $hata[] = "<p>Kullanıcı adını giriniz</p>";*/
-        /*if (empty($telephonenumber)) $hata[] = "<p>Cep Telefonunu giriniz</p>";*/
-        /*if (empty($mail)) $hata[] = "<p>Eposta adresini giriniz</p>";*/
-        /*if (empty($ipphone)) $hata[] = "<p>Dahili no giriniz</p>";*/
 
         if (!empty($hata)) alert_danger($hata);
         else {
@@ -52,12 +49,14 @@ if (!empty($_GET['edit'])) {
             $user_dn = $entries[0]["dn"];
 
             $update = [
-                "info" => $info,
+                "facsimiletelephonenumber" => $facsimiletelephonenumber,
                 "mail" => $mail,
                 "telephoneNumber" => $telephonenumber,
                 "ipPhone" => $ipphone,
+                "info" => $info,
                 "department" => $department
             ];
+
             if (!ldap_mod_replace($ldap, $user_dn, $update)) {
                 die("LDAP Güncelleme Hatası: " . ldap_error($ldap));
             }
@@ -91,15 +90,14 @@ if (!empty($_GET['edit'])) {
             die("LDAP Bind Başarısız! Hata: " . ldap_error($ldap));
         }
 
-        // Arama (facsimileTelephoneNumber dahil)
-        $result = @ldap_search($ldap, $ldap_dn, $filter, ["name", "facsimileTelephoneNumber", "mail", "telephonenumber", "ipphone", "info", "department"]);
+        $result = @ldap_search($ldap, $ldap_dn, $filter, ["name", "facsimiletelephonenumber", "mail", "telephonenumber", "ipphone", "info", "department"]);
 
         if (!$result) die("LDAP Araması Başarısız! Hata: " . ldap_error($ldap));
 
         $entries = ldap_get_entries($ldap, $result);
         if ($entries["count"] > 0) {
             $cn = $entries[0]["name"][0] ?? 'Veri yok';
-            $personelSicilNo = $entries[0]["facsimiletelephonenumber"][0] ?? 'Veri yok';
+            $cardNumber = $entries[0]["facsimiletelephonenumber"][0] ?? 'Veri yok';
             $mail = $entries[0]["mail"][0] ?? 'Veri yok';
             $telephonenumber = $entries[0]["telephonenumber"][0] ?? 'Veri yok';
             $ipphone = $entries[0]["ipphone"][0] ?? 'Veri yok';
@@ -129,30 +127,35 @@ if (!empty($_GET['edit'])) {
                         <div class="form-group">
                             <label>TC</label>
                             <input type="text" class="form-control" name="info" id="info"
-                                   value="<?= $personelTC ?>" <?= ($_SESSION['admin']==1) ?: 'readonly' ?>/>
+                                   value="<?= $personelTC ?>" <?= ($_SESSION['admin']==1 OR $_SESSION['sifre']==1) ?: 'readonly' ?>/>
+                        </div>
+                        <div class="form-group">
+                            <label>Kart Numarası</label>
+                            <input type="text" class="form-control" name="facsimiletelephonenumber" id="facsimiletelephonenumber"
+                                   value="<?= $cardNumber ?>" <?= ($_SESSION['admin']==1 OR $_SESSION['sifre']==1) ?: 'readonly' ?>/>
                         </div>
                         <div class="form-group">
                             <label>Müdürlük</label>
                             <input type="text" class="form-control" name="department" id="department"
-                                   value="<?= $department ?>" <?= ($_SESSION['admin']==1) ?: 'readonly' ?>/>
+                                   value="<?= $department ?>" <?= ($_SESSION['admin']==1 OR $_SESSION['sifre']==1) ?: 'readonly' ?>/>
                         </div>
                         <div class="form-group">
                             <label>E-Posta</label>
                             <input type="text" class="form-control" name="mail" id="mail"
-                                   value="<?= $mail ?>" <?= ($_SESSION['admin']==1) ?: 'readonly' ?>/>
+                                   value="<?= $mail ?>" <?= ($_SESSION['admin']==1 OR $_SESSION['sifre']==1) ?: 'readonly' ?>/>
                         </div>
                         <div class="form-group">
                             <label>Cep Telefonu</label>
                             <input type="text" class="form-control" name="telephonenumber" id="telephonenumber"
-                                   value="<?= $telephonenumber ?>" <?= ($_SESSION['admin']==1) ?: 'readonly' ?>/>
+                                   value="<?= $telephonenumber ?>" <?= ($_SESSION['admin']==1 OR $_SESSION['sifre']==1) ?: 'readonly' ?>/>
                         </div>
                         <div class="form-group">
                             <label>Dahili Telefon</label>
                             <input type="text" class="form-control" name="ipphone" id="ipphone"
-                                   value="<?= $ipphone ?>" <?= ($_SESSION['admin']==1) ?: 'readonly' ?>/>
+                                   value="<?= $ipphone ?>" <?= ($_SESSION['admin']==1 OR $_SESSION['sifre']==1) ?: 'readonly' ?>/>
                         </div>
                     </div>
-                    <?php if ($_SESSION['admin']==1):?>
+                    <?php if ($_SESSION['admin']==1 OR $_SESSION['sifre']==1):?>
                     <div class="box-footer">
                         <button type="submit" class="btn btn-success">Kaydet</button>
                     </div>

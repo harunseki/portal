@@ -11,7 +11,7 @@ require_once("../class/functions.php");
 require_once("../class/resize-class.php");
 
 require_once("inc/header.php");
-require_once("inc/menu.php");
+require_once("inc/menu1.php");
 
 $id=$purifier->purify(rescape((int)$_GET['edit']));
 if (empty($purifier->purify(rescape($_GET['tablo'])))) $tablo="galeri";

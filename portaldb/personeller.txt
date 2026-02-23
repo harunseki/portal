@@ -1,4 +1,0 @@
-"id"	"sicil_no"	"username"	"adi"	"soyadi"	"email"	"departman"	"created_at"
-"1"	"6103"	"harunseki"	"harun"	"Seki"	"harunseki@cankaya.bel.tr"	"5"	"30/9/2025 14:05:19"
-"2"	"53350304700"	"oktayrifatsen"	"Oktay"	"Şen"	"harunseki@cankaya.bel.tr"	"5"	"30/9/2025 14:05:19"
-"3"	"2"	"aliveli"	"Ali"	"Veli"	"harunseki@cankaya.bel.tr"	"5"	"30/9/2025 14:05:19"

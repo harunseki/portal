@@ -1,11 +1,16 @@
 <?php
 $file = "yemekhane";
 require_once "inc/header.php";
-require_once "inc/menu.php";
+require_once "inc/menu1.php";
 
 // GET parametresi al
 $x = isset($_GET['x']) ? (int) $_GET['x'] : 1;
-$x = $purifier->purify(rescape($x));
+
+$allowed = [1, 2, 6];
+
+if (!in_array($x, $allowed, true)) {
+    require_once "inc/kontrol.php";
+}
 
 // Dahil edilecek dosya yolu
 $pageFile = sprintf("%s/x%d.php", $file, $x);

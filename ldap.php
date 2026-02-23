@@ -1,8 +1,7 @@
 <?php
 $file = "ldap";
 require_once "inc/header.php";
-require_once "inc/menu.php";
-
+require_once "inc/menu1.php";
 
 // GET parametresi al
 $x = isset($_GET['x']) ? (int) $_GET['x'] : 1;

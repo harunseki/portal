@@ -6,7 +6,6 @@
         <div class="col-xs-6 text-right"></div>
     </div>
 </section>
-
 <section class="content">
     <div class='row' style="margin-top:10px;">
         <div class='col-md-12'>
@@ -16,9 +15,6 @@
                 </div>
                 <div class='box-body'>
                     <?php
-                    require_once("class/mysql.php");
-
-                    // --- KAYIT EKLE / GÜNCELLE ---
                     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $kategori = trim($_POST['kategori'] ?? '');
                         $baslik = trim($_POST['baslik'] ?? '');
@@ -26,19 +22,37 @@
                         $baslangic = $_POST['baslangic_tarihi'] ?? '';
                         $bitis = $_POST['bitis_tarihi'] ?? '';
                         $aktif = isset($_POST['aktif']) ? 1 : 0;
+                        $cookie_mode = $_POST['cookie_mode'] ?? 'none'; // ✔ ÇEREZ EKLENDİ
                         $id = $_POST['id'] ?? '';
+
+                        // ✔ RESİM YÜKLEME KODU
+                        $image_sql = "";
+                        if (!empty($_FILES['popup_image']['name'])) {
+
+                            $targetDir = "img/popups/";
+                            if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
+
+                            $fileName = time() . "_" . basename($_FILES["popup_image"]["name"]);
+                            $targetFile = $targetDir . $fileName;
+
+                            if (move_uploaded_file($_FILES["popup_image"]["tmp_name"], $targetFile)) {
+                                $image_sql = ", image_url='$targetFile'";
+                            }
+                        }
 
                         if ($kategori == '' || $baslik == '' || $icerik == '') {
                             echo "<div class='alert alert-danger'>Kategori, başlık ve içerik boş olamaz.</div>";
                         } else {
                             if ($id) {
-                                $stmt = $dba->prepare("UPDATE popups SET kategori=?, baslik=?, icerik=?, baslangic_tarihi=?, bitis_tarihi=?, aktif=? WHERE id=?");
-                                $stmt->execute([$kategori, $baslik, $icerik, $baslangic, $bitis, $aktif, $id]);
+                                $stmt = $dba->prepare("UPDATE popups SET kategori=?, baslik=?, icerik=?, baslangic_tarihi=?, bitis_tarihi=?, aktif=?, cookie_mode=? $image_sql WHERE id=?");
+                                $stmt->execute([$kategori, $baslik, $icerik, $baslangic, $bitis, $aktif, $cookie_mode, $id]);
                                 echo "<div class='alert alert-success'>Pop-up güncellendi.</div>";
+                                $dba->addLog($ip, $ldap_username, $personelTC, "update", "Pop-up güncellendi: ".$icerik);
                             } else {
-                                $stmt = $dba->prepare("INSERT INTO popups (kategori, baslik, icerik, baslangic_tarihi, bitis_tarihi, aktif) VALUES (?, ?, ?, ?, ?, ?)");
-                                $stmt->execute([$kategori, $baslik, $icerik, $baslangic, $bitis, $aktif]);
+                                $stmt = $dba->prepare("INSERT INTO popups (kategori, baslik, icerik, baslangic_tarihi, bitis_tarihi, aktif, cookie_mode, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                                $stmt->execute([$kategori, $baslik, $icerik, $baslangic, $bitis, $aktif, $cookie_mode, ($image_sql ? $targetFile : null)]);
                                 echo "<div class='alert alert-success'>Yeni pop-up eklendi.</div>";
+                                $dba->addLog($ip, $ldap_username, $personelTC, "create", "Yeni pop-up eklendi: ".$icerik);
                             }
                         }
                     }
@@ -48,6 +62,7 @@
                         $id = intval($_GET['sil']);
                         $dba->query("DELETE FROM popups WHERE id=$id");
                         echo "<div class='alert alert-warning'>Pop-up silindi.</div>";
+                        $dba->addLog($ip, $ldap_username, $personelTC, "delete", "Pop-up silindi.");
                     }
 
                     // --- DÜZENLE ---
@@ -58,7 +73,7 @@
                     }
                     ?>
 
-                    <form method="post">
+                    <form method="post" enctype="multipart/form-data"> <!-- ✔ RESİM İÇİN GEREKLİ -->
                         <input type="hidden" name="id" value="<?= htmlspecialchars($duzenle['id'] ?? '') ?>">
 
                         <div class="form-group">
@@ -69,8 +84,8 @@
                                 <option value="uyari"  <?= ($duzenle['kategori'] ?? '') === 'uyari'  ? 'selected' : '' ?>>Uyarı</option>
                                 <option value="kritik" <?= ($duzenle['kategori'] ?? '') === 'kritik' ? 'selected' : '' ?>>Kritik</option>
                             </select>
-
                         </div>
+
                         <div class="form-group">
                             <label class="kirmizi">Başlık</label>
                             <input type="text" class="form-control" name="baslik" required
@@ -94,6 +109,26 @@
                                 <input type="datetime-local" class="form-control" name="bitis_tarihi"
                                        value="<?= isset($duzenle['bitis_tarihi']) ? date('Y-m-d\TH:i', strtotime($duzenle['bitis_tarihi'])) : '' ?>" required/>
                             </div>
+                        </div>
+
+                        <!-- ✔ RESİM YÜKLEME ALANI -->
+                        <div class="form-group" style="margin-top:10px;">
+                            <label>Pop-up Resmi</label>
+                            <input type="file" name="popup_image" class="form-control">
+
+                            <?php if (!empty($duzenle['image_url'])): ?>
+                                <img src="<?= $duzenle['image_url'] ?>" style="max-width:200px;margin-top:10px;border:1px solid #ccc;">
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- ✔ ÇEREZ AYARI -->
+                        <div class="form-group">
+                            <label>Çerez Gösterim Ayarı</label>
+                            <select name="cookie_mode" class="form-control">
+                                <option value="none"  <?= ($duzenle['cookie_mode'] ?? '') == 'none'  ? 'selected' : '' ?>>Çerez Kullanma (Her zaman göster)</option>
+                                <option value="daily" <?= ($duzenle['cookie_mode'] ?? '') == 'daily' ? 'selected' : '' ?>>Günde 1 Kez Göster</option>
+                                <option value="once"  <?= ($duzenle['cookie_mode'] ?? '') == 'once'  ? 'selected' : '' ?>>Sadece 1 Kez Göster</option>
+                            </select>
                         </div>
 
                         <div class="form-group" style="margin-top:10px;">

@@ -2,65 +2,50 @@
     <section class="sidebar">
         <div class="user-panel">
             <div class="pull-left info">
-                <a href="index.php"><p style="font-size: 14px"> Hoşgeldin, <?= $cn ?></p>
+                <a href="index"><p style="font-size: 14px"> Hoşgeldin, <?= $cn ?></p>
                 <i class="fa fa-circle text-success"></i> Çevrim İçi</a>
             </div>
         </div>
         <ul class="sidebar-menu">
             <li class="<?= ($file=="") ? '' : '' ?>">
-                <a href="index.php" style="<?= ($file=="") ? 'font-weight: bold' : '' ?>">
+                <a href="index" style="<?= ($file=="") ? 'font-weight: bold' : '' ?>">
                     <i class="fa fa-home"></i> <span>Ana Sayfa</span>
                 </a>
             </li>
-            <?php if ($_SESSION['admin']==1 OR $_SESSION['sifre']==1): ?>
-            <?php endif;  ?>
-
+            <!-- Rehber-->
             <li class="treeview <?= ($file=="dahili" OR $file=="ldap") ? 'active' : '' ?>">
-                    <a href="javascript:void(0);">
-                        <i class="fa fa-group"></i> <span>REHBER</span>
-                        <i class="fa fa-angle-left pull-right"></i>
+                <a href="javascript:void(0);">
+                    <i class="fa fa-group"></i> <span>REHBER</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu" <?= ($file=="bgys") ? 'style="display:block;"' : '' ?>>
+                    <li><a href="ldap"><i class="fa fa-angle-double-right"></i> Personel Rehberi</a></li>
+                    <li><a href="dahili"><i class="fa fa-angle-double-right"></i> Müdürlük Rehberi</a></li>
+                </ul>
+            </li>
+            <!--Moduller-->
+            <?php if ($hasPermission AND ($_SESSION['kullanici_mudurluk']!=6)) { ?>
+                <li class="<?= ($file=="moduller") ? 'active' : '' ?>">
+                    <a href="moduller" style="<?= ($file=="moduller") ? 'font-weight: bold' : '' ?>">
+                        <i class="fa fa-qrcode"></i> <span>MODÜLLER</span>
                     </a>
-                    <ul class="treeview-menu" <?= ($file=="bgys") ? 'style="display:block;"' : '' ?>>
-                        <li><a href="ldap.php"><i class="fa fa-angle-double-right"></i> Personel Rehberi</a></li>
-                        <li><a href="dahili.php"><i class="fa fa-angle-double-right"></i> Müdürlük Rehberi</a></li>
-                        <?php if ($_SESSION['admin']==1 OR $ldap_username=="selcukkarabulut"): ?>
-                            <li><a href="ldap.php?x=2"><i class="fa fa-angle-double-right"></i> SMS Gönder</a></li>
-                        <?php endif;  ?>
-                    </ul>
                 </li>
-            <!--<li class="<?php /*= ($file=="ldap") ? '' : '' */?>">
-                <a href="ldap.php" style=" text-transform: uppercase; <?php /*= ($file=="ldap") ? 'font-weight: bold' : '' */?>">
-                    <i class="fa fa-group"></i> <span>Personel Rehberi </span>
-                </a>
-            </li>-->
+            <?php } ?>
+            <!--Duyuru ve Etkinlikler-->
             <li class="<?= ($file=="etkinlik_duyuru") ? '' : '' ?>">
-                <a href="etkinlik_duyuru.php?x=3" style="<?= ($file=="etkinlik_duyuru") ? 'font-weight: bold' : '' ?>;">
-                    <i class="fa fa-bullhorn"></i> <span>Duyuru ve Etkinlikler</span>
+                <a href="3-etkinlik-duyuru" style="<?= ($file=="etkinlik_duyuru") ? 'font-weight: bold' : '' ?>;">
+                    <i class="fa fa-bullhorn"></i> <span>Etkinlik ve Duyurular</span>
                 </a>
             </li>
-            <?php if ($_SESSION['qr_code']==1 OR $_SESSION['admin']==1) { ?>
-            <li class="<?= ($file=="qr_olusturucu") ? '' : '' ?>">
-                <a href="qr_olusturucu.php" style="<?= ($file=="qr_olusturucu") ? 'font-weight: bold' : '' ?>">
-                    <i class="fa fa-qrcode"></i> <span>QR Oluştur</span>
-                </a>
-            </li>
-            <?php } ?>
-            <?php if ($_SESSION['popup_yonetim']==1 OR $_SESSION['admin']==1) { ?>
-            <li class="<?= ($file=="popup_yonetim") ? '' : '' ?>">
-                <a href="popup_yonetim.php" style="<?= ($file=="popup_yonetim") ? 'font-weight: bold' : '' ?>">
-                    <i class="fa fa-qrcode"></i> <span>Popup Yönetimi</span>
-                </a>
-            </li>
-            <?php } ?>
             <!--Formlar-->
             <li class="<?= ($file=="formlar") ? '' : '' ?>">
-                <a href="formlar.php" style="<?= ($file=="formlar") ? 'font-weight: bold' : '' ?>">
+                <a href="formlar" style="<?= ($file=="formlar") ? 'font-weight: bold' : '' ?>">
                     <i class="fa fa-file-text-o"></i> <span>Formlar</span>
                 </a>
             </li>
             <!--Mevzuat-->
-            <li class="">
-                <a href="mevzuat.php">
+            <li class="<?= ($file=="mevzuat") ? 'active' : '' ?>">
+                <a href="mevzuat" style="<?= ($file=="mevzuat") ? 'font-weight: bold' : '' ?>">
                     <i class="fa fa-balance-scale icon"></i> <span>Mevzuat</span>
                 </a>
             </li>
@@ -84,39 +69,6 @@
                     <li><a href="https://www.cankaya.bel.tr/iletisim" target="_blank"><i class="fa fa-angle-double-right"></i> İletişim</a></li>
                 </ul>
             </li>
-            <!--BGYS-->
-            <!--<li class="treeview <?php /*= ($file=="bgys") ? '' : '' */?>">
-                <a href="javascript:void(0);">
-                    <i class="fa fa-folder"></i> <span>BGYS-KVKK</span>
-                    <i class="fa fa-angle-left pull-right"></i>
-                </a>
-                <ul class="treeview-menu" <?php /*= ($file=="bgys") ? 'style="display:block;"' : '' */?>>
-                    <li><a href="../backup/bgys/ÇB-BGYS-PL-02%20Bilgi%20Güvenliği%20Alt%20Politikaları.docx" target="_blank"><i class="fa fa-angle-double-right"></i> Alt Politikalar</a></li>
-                    <li><a href="../backup/video/BGYS%20Farkındalık%20Eğitimi.mp4" target="_blank"><i class="fa fa-angle-double-right"></i> BGYS Eğitimi</a></li>
-                    <li><a href="../backup/bgys/Bilgi%20Güvenliği%20Politikamız.docx" target="_blank"><i class="fa fa-angle-double-right"></i> Bilgi Güvenliği</a></li>
-                    <li><a href="../backup/bgys/ÇB-BGYS-FR-19%20Güvenlik%20Duvarı%20Erişim%20Talep%20Formu.docx" target="_blank"><i class="fa fa-angle-double-right"></i> Güvenlik Duvarı Talep Formu</a></li>
-                    <li><a href="../backup/bgys/ÇB-BGYS-FR-04%20Güvenlik%20İhlalleri%20Bildirim%20Formu.docx" target="_blank"><i class="fa fa-angle-double-right"></i> İhlal Bildirim Formu</a></li>
-                    <li><a href="../backup/bgys/KVKK%20Kılavuzu.pdf" target="_blank"><i class="fa fa-angle-double-right"></i> KVKK Kılavuz</a></li>
-                    <li><a href="../backup/bgys/KPS%20TAAHÜTNAME.pdf" target="_blank"><i class="fa fa-angle-double-right"></i> KPS Taahhütname</a></li>
-                    <li><a href="../backup/video/KVKK%20Farkındalık%20Eğitimi.mp4" target="_blank"><i class="fa fa-angle-double-right"></i> KVKK Eğitimi</a></li>
-                    <li><a href="../backup/bgys/Tapu%20Takbis%20Taahhütname.docx" target="_blank"><i class="fa fa-angle-double-right"></i> Tapu Taahhütname</a></li>
-                    <li><a href="../backup/bgys/ÇB-BGYS-FR-13%20Personel%20VPN%20Erişim%20Talep%20Formu.docx" target="_blank"><i class="fa fa-angle-double-right"></i> VPN Talep Formu</a></li>
-                    <li><a href="../backup/bgys/ÇB-BGYS-FR-14%20Yetki%20Talep%20Formu.docx" target="_blank""><i class="fa fa-angle-double-right"></i> Yetki Talep Formu</a></li>
-                </ul>
-            </li>-->
-            <!--Yetkili-->
-            <?php if ($_SESSION['yetkili_islemleri']==1  OR $_SESSION['admin']==1 ) { ?>
-            <li class="treeview <?= ($file=="yetkili") ? '' : '' ?>">
-                <a href="#" style="<?= ($file=="yetkili") ? 'font-weight: bold' : '' ?>">
-                    <i class="fa fa-edit"></i> <span>Yetkili İşlemleri</span>
-                    <i class="fa fa-angle-left pull-right"></i>
-                </a>
-                <ul class="treeview-menu">
-                    <li><a href="yetkili.php" style="<?= ($file=="yetkili" AND ($x==1 OR empty($x))) ? 'font-weight: bold' : '' ?>"><i class="fa fa-angle-double-right"></i> Yetkili Ekle</a></li>
-                    <li><a href="yetkili.php?x=2" style="<?= ($file=="yetkili" AND $x==2) ? 'font-weight: bold' : '' ?>"><i class="fa fa-angle-double-right"></i> Yetkili Düzenle</a></li>
-                </ul>
-            </li>
-            <?php } ?>
         </ul>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
         <div class="sidebar-social">
@@ -218,7 +170,6 @@
             .social-badge { margin-bottom: 5px; display:flex; justify-content:center; align-items:center; }
             .social-badge img { display:block; max-width:100%; height:auto; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.15); }
         </style>
-
-
     </section>
+</aside>
 </aside>

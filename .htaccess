@@ -1,0 +1,31 @@
+RewriteEngine On
+
+RewriteCond %{QUERY_STRING} base64_encode.*\(.*\) [OR]
+RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
+RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
+RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2})
+RewriteRule ^(.*)$ index.php [F,L]
+
+RewriteRule ^index index.php
+RewriteRule ^dahili dahili.php
+RewriteRule ^etkinlik-duyuru etkinlik_duyuru.php
+RewriteRule ^formlar formlar.php
+RewriteRule ^giris-cikis giris_cikis.php
+RewriteRule ^ldap ldap.php
+RewriteRule ^mevzuat mevzuat.php
+RewriteRule ^moduller moduller.php
+RewriteRule ^yemek-listesi yemek_listesi.php
+
+RewriteRule ^([^/]+)-([0-9]+)-banner-detay banner_detay.php?title=$1&id=$2 [NC]
+RewriteRule ^([^/]+)-([0-9]+)-([0-9]+)-basvuru basvuru.php?title=$1&port=$2&x=$3 [NC]
+RewriteRule ^([^/]+)-([0-9]+)-yetkili yetkili.php?edit=$1&x=$2 [NC]
+RewriteRule ^([^/]+)-giris_cikis.html giris_cikis.php?title=$1 [NC]
+RewriteRule ^([0-9]+)-etkinlik-duyuru etkinlik_duyuru.php?id=$1 [NC]
+RewriteRule ^([0-9]+)-yemekhane yemekhane.php?x=$1 [NC]
+RewriteRule ^([0-9]+)-yetkili yetkili.php?x=$1 [NC]
+RewriteRule ^([^/]+)-([0-9]+)-yetkili yetkili.php?edit=$1&x=$2 [NC]
+
+<IfModule mod_security.c>
+SecFilterEngine Off
+SecFilterScanGET Off
+</IfModule>

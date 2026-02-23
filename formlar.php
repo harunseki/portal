@@ -1,7 +1,7 @@
 <?php
 $file = "formlar";
 require_once("inc/header.php");
-require_once("inc/menu.php");
+require_once("inc/menu1.php");
 
 // Dosya klasörü
 $klasor = __DIR__ . "/backup/formlar";
@@ -43,6 +43,17 @@ function jsStyleHash($str) {
 }
 ?>
 <aside class="right-side">
+    <style>
+        .file-card { display:flex; flex-direction:column; justify-content:space-between; margin-bottom:20px; }
+        .file-card .box-header { white-space:normal; overflow-wrap:break-word; word-break:break-word; }
+        #dosyaArama {
+            border-radius: 20px;
+            padding-left: 12px;
+        }
+        #pageInfo {
+            color: #333;
+        }
+    </style>
     <section class="content-header">
         <div class="row">
             <div class="col-xs-6"><h2>Formlar</h2></div>
@@ -125,23 +136,6 @@ function jsStyleHash($str) {
 
 <script>
     $(document).ready(function(){
-        toastr.options = {
-            "closeButton": false,
-            "debug": false,
-            "newestOnTop": true,
-            "progressBar": false,
-            "positionClass": "toast-bottom-left",
-            "preventDuplicates": true,
-            "onclick": null,
-            "showDuration": "300",
-            "hideDuration": "300",
-            "timeOut": "2000",
-            "extendedTimeOut": "500",
-            "showEasing": "swing",
-            "hideEasing": "linear",
-            "showMethod": "fadeIn",
-            "hideMethod": "fadeOut"
-        };
 
         // Silme
         $(".silBtn").on("click", function(){
@@ -283,17 +277,4 @@ function jsStyleHash($str) {
     showPage(currentPage);
 
 </script>
-
-<style>
-    .file-card { display:flex; flex-direction:column; justify-content:space-between; margin-bottom:20px; }
-    .file-card .box-header { white-space:normal; overflow-wrap:break-word; word-break:break-word; }
-    #dosyaArama {
-        border-radius: 20px;
-        padding-left: 12px;
-    }
-    #pageInfo {
-        color: #333;
-    }
-</style>
-
 <?php require_once "inc/footer.php"; ?>

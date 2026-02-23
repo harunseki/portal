@@ -1,7 +1,7 @@
 <?php
 $file = "dahili";
 require_once "inc/header.php";
-require_once "inc/menu.php";
+require_once "inc/menu1.php";
 
 
 // GET parametresi al

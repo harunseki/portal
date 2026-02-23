@@ -79,7 +79,7 @@ $selectedBirim = $_GET['birim'] ?? '';
     <div id="dahiliSonuc" class="row" style="margin: 10px 0px;"></div>
 </section>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!--<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>-->
 <script>
     $(function(){
         // Müdürlük seçildiğinde birimleri getir ve dahili listesini yükle
@@ -141,7 +141,7 @@ $selectedBirim = $_GET['birim'] ?? '';
                 `).join('');
                     html += `
                     <div class="col-md-3">
-                        <div class="box box-success">
+                        <div class="box box-success" style="height:120px;">
                             <div class="box-header">
                                 <h3 class="box-title">${item.baslik}</h3>
                             </div>

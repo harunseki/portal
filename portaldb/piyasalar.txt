@@ -1,2 +1,0 @@
-"id"	"dolar_satis"	"euro_satis"	"altin_satis"	"btc_satis"	"guncellenme_zamani"
-"1"	"42,0641"	"48,4650"	"5.407,96"	"4.513.619"	"3/11/2025 13:06:16"

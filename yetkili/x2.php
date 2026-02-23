@@ -1,5 +1,5 @@
 ﻿<?php
-if (empty($_SESSION['yetkili_islemleri']) AND empty($_SESSION['admin']) ) {
+if (empty($_SESSION['yetkili_islemleri']) AND empty($_SESSION['admin']) AND empty($admin)) {
     // Yetkisiz erişim
     http_response_code(403); // 403 Forbidden
     ?>
@@ -41,13 +41,27 @@ if (empty($_SESSION['yetkili_islemleri']) AND empty($_SESSION['admin']) ) {
     exit();
 }
 $tablo="yetkili";
-$tablo1="5257debfbc904d2dbec03afd4e971f1cb69c6b3c";
-$tablo2="1700728637";
 if(isset($_GET['delete'])){
     $delete=$purifier->purify(rescape((int)$_GET['delete']));
     $q=$dba->query("UPDATE $tablo SET yetkili_durumu=0 WHERE id='$delete' ");
 
     if($dba->affected_rows()>0) alert_success("Yetkili sistemden kaldırılmıştır.");
+}
+
+$kategoriYetkiler = [];
+$sql = "SELECT k.id   AS kategori_id, k.baslik AS kategori_adi, m.id   AS modul_id, m.isim AS modul_adi
+        FROM mod_kategori k
+        JOIN mod_moduller m ON m.kategori_id = k.id
+        WHERE m.aktif > 0
+        ORDER BY k.siralama, m.isim ";
+
+$q = $dba->query($sql);
+while ($r = $dba->fetch_assoc($q)) {
+    $kategoriYetkiler[$r['kategori_id']]['baslik'] = $r['kategori_adi'];
+    $kategoriYetkiler[$r['kategori_id']]['moduller'][] = [
+        'id'   => $r['modul_id'],
+        'isim' => $r['modul_adi']
+    ];
 }
 if (empty($_GET['edit'])) { ?>
     <div class="row">
@@ -56,93 +70,243 @@ if (empty($_GET['edit'])) { ?>
                 <div class="box-header">
                     <h3 class="box-title">Yetkili Düzenle</h3>
                     <div style="float: right; margin: 10px">
-                        <a href="<?= strip($file) ?>.php" class="btn btn-danger" style="color: white">
+                        <a href="1-<?= strip($file) ?>" class="btn btn-success" style="color: white">
                             <i class="fa fa-plus"></i> <strong>Yetkili Ekle</strong>
                         </a>
                     </div>
                 </div>
-                <div class="box-body table-responsive">
-                    <table id="example1" class="table table-bordered table-striped text-center align-middle">
-                        <thead>
-                        <tr>
-                            <th>Adı</th>
-                            <th>Soyadı</th>
-                            <th>LDAP Kullanıcı Adı</th>
-                            <th>Admin</th>
-                            <th>Şifre</th>
-                            <th>Yemekhane</th>
-                            <th>Etkinlik</th>
-                            <th>Yetkili İşl.</th>
-                            <th>QR Kod</th>
-                            <th>Formlar</th>
-                            <th>Pop-up</th>
-                            <th>İşlemler</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <?php
-                        $q = $dba->query("SELECT * FROM yetkili WHERE yetkili_durumu=1 ORDER BY adi ASC");
-                        while ($row = $dba->fetch_assoc($q)) { ?>
-                            <tr data-id="<?= (int)$row['id'] ?>">
-                                <td style="align-content: center;"><?= strip($row['adi']) ?></td>
-                                <td style="align-content: center;"><?= strip($row['soyadi']) ?></td>
-                                <td style="align-content: center;"><?= strip($row['username']) ?></td>
-
-                                <?php
-                                $yetki_alanlari = ['admin','sifre','yemekhane','etkinlik_duyuru','yetkili_islemleri','qrcode','formlar','popup_yonetim'];
-                                foreach ($yetki_alanlari as $alan):
-                                    $aktif = $row[$alan] ? 'aktif' : 'pasif';
-                                    $renk = $row[$alan] ? '#28a745' : '#dc3545';
-                                    ?>
-                                    <td style="align-content: center;">
-                                        <div class="yetki-btn"
-                                             data-field="<?= $alan ?>"
-                                             data-status="<?= $aktif ?>"
-                                             style="cursor:pointer; background:<?= $renk ?>; color:white; border-radius:5px; padding:5px 8px; font-size: 12px; font-weight:600;">
-                                            <?= $row[$alan] ? 'AKTİF' : 'PASİF' ?>
-                                        </div>
-                                    </td>
-                                <?php endforeach; ?>
-
-                                <td>
-                                    <a href="<?= strip($file) ?>.php?x=2&edit=<?= strip((int)$row['id']) ?>" class="btn btn-default">
-                                        <img src="img/edit.png" />
-                                    </a>
-                                    <a href="<?= strip($file) ?>.php?x=2&delete=<?= strip((int)$row['id']) ?>"
-                                       class="btn btn-default"
-                                       onclick="return confirm('Silmek istediğinize emin misiniz?');">
-                                        <img src="img/delete1.png" style="height: 15px"/>
-                                    </a>
-                                </td>
+                <div class="box-body">
+                    <div class="scroll-container">
+                        <table class="table table-bordered">
+                            <thead>
+                            <tr>
+                                <th>Adı</th>
+                                <th>Soyadı</th>
+                                <th>Username</th>
+                                <th>Yetkiler</th>
+                                <th>İşlem</th>
                             </tr>
-                        <?php } ?>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                            <?php
+                            $q = $dba->query("SELECT * FROM yetkili WHERE yetkili_durumu=1 ORDER BY username ASC");
+                            while ($row = $dba->fetch_assoc($q)) {
+
+                                // Kullanıcının yetkileri
+                                $uyet = [];
+                                $qy = $dba->query(" SELECT yetki_key, deger FROM yetkili_moduller WHERE kullanici_id = ".(int)$row['id']
+                                );
+                                while ($yy = $dba->fetch_assoc($qy)) {
+                                    $uyet[(int)$yy['yetki_key']] = (int)$yy['deger'];
+                                }
+                                ?>
+                                <tr data-id="<?= (int)$row['id'] ?>">
+                                    <td><?= strip($row['adi']) ?></td>
+                                    <td><?= strip($row['soyadi']) ?></td>
+                                    <td><?= strip($row['username']) ?></td>
+                                    <td>
+                                        <button class="btn btn-primary btn-sm yetki-ac"
+                                                data-user="<?= (int)$row['id'] ?>"
+                                                data-adi="<?= strip($row['adi']) ?> <?= strip($row['soyadi']) ?>">
+                                            <i class="fa fa-lock"></i> Yetkiler
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <a href="<?= strip($file) ?>.php?x=2&edit=<?= (int)$row['id'] ?>" class="btn btn-default">
+                                            <img src="img/edit.png" />
+                                        </a>
+                                        <a href="<?= strip($file) ?>.php?x=2&delete=<?= (int)$row['id'] ?>"
+                                           class="btn btn-default"
+                                           onclick="return confirm('Silmek istediğinize emin misiniz?');">
+                                            <img src="img/delete1.png" style="height:15px" />
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php } ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <div class="modal fade" id="yetkiModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg yetki-modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">
+                        <i class="fa fa-lock"></i>
+                        Yetkiler – <span id="yetkiKullaniciAdi"></span>
+                    </h4>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs">
+                        <?php $i = 0; foreach ($kategoriYetkiler as $katId => $kat): ?>
+                            <li class="<?= $i === 0 ? 'active' : '' ?>">
+                                <a href="#kat<?= $katId ?>" data-toggle="tab">
+                                    <?= strip($kat['baslik']) ?>
+                                </a>
+                            </li>
+                        <?php $i++; endforeach; ?>
+                    </ul>
+                    <div class="tab-content" style="margin-top:15px">
+                        <?php $i = 0; foreach ($kategoriYetkiler as $katId => $kat): ?>
+                            <div class="tab-pane <?= $i === 0 ? 'active' : '' ?>" id="kat<?= $katId ?>">
+                                <div class="row">
+                                    <?php foreach ($kat['moduller'] as $m): ?>
+                                        <div class="col-md-3">
+                                            <div class="well well-sm">
+                                                <strong><?= strip($m['isim']) ?></strong>
+                                                <div class="pull-right">
+                                                    <button class="btn btn-xs yetki-toggle btn-danger" data-yetki-id="<?= (int)$m['id'] ?>" data-status="0">
+                                                        PASİF
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php $i++; endforeach; ?>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">
+                        Kapat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <style>
+        .yetki-modal-xl {
+            width: 55%;
+            max-width: 1400px;
+        }
+
+        .scroll-container {
+            width: 100%;
+            overflow-x: auto;
+            position: relative;
+        }
+        .myTable th,
+        .myTable td {
+            white-space: nowrap;
+        }
+        .myTable th:nth-child(1),
+        .myTable td:nth-child(1),
+        .myTable th:nth-child(2),
+        .myTable td:nth-child(2),
+        .myTable th:nth-child(3),
+        .myTable td:nth-child(3) {
+            position: sticky;
+            left: 0;
+            z-index: 3;
+            background: #fff;
+        }
+        .myTable th:nth-child(2),
+        .myTable td:nth-child(2) {
+            /*left: 120px*/;
+        }
+        .myTable th:nth-child(3),
+        .myTable td:nth-child(3) {
+            left: 240px;
+        }
+        .myTable th:last-child,
+        .myTable td:last-child {
+            position: sticky;
+            right: 0;
+            z-index: 3;
+            background: #fff;
+        }
+    </style>
     <script>
-        $(function(){
-            $('.yetki-btn').on('click', function(){
+        $(document).on('click', '.yetki-ac', function () {
+            const userId = $(this).data('user');
+            const ad = $(this).data('adi');
+
+            $('#yetkiKullaniciAdi').text(ad);
+            $('#yetkiModal').data('user-id', userId);
+
+            // Önce tüm butonları PASİF yap
+            $('.yetki-toggle')
+                .removeClass('btn-success')
+                .addClass('btn-danger')
+                .text('PASİF')
+                .data('status', 0);
+
+            $.post('yetkili/yetkiler_getir.php', {
+                user_id: userId
+            }, function (resp) {
+                if (resp.success) {
+                    $.each(resp.yetkiler, function (yetkiId, deger) {
+                        if (deger == 1) {
+                            const btn = $('.yetki-toggle[data-yetki-id="'+yetkiId+'"]');
+                            btn
+                                .removeClass('btn-danger')
+                                .addClass('btn-success')
+                                .text('AKTİF')
+                                .data('status', 1);
+                        }
+                    });
+                }
+                $('#yetkiModal').modal('show');
+            }, 'json');
+        });
+
+        $(document).on('click', '.yetki-toggle', function () {
+            const btn = $(this);
+            const yetki_id = btn.data('yetki-id');
+            const user_id = $('#yetkiModal').data('user-id');
+
+            $.post('yetkili/yetki_toggle.php', {
+                id: user_id,
+                yetki_id: yetki_id
+            }, function (resp) {
+
+                if (resp.success) {
+                    const aktif = resp.yeni_durum == 1;
+
+                    btn
+                        .removeClass('btn-success btn-danger')
+                        .addClass(aktif ? 'btn-success' : 'btn-danger')
+                        .text(aktif ? 'AKTİF' : 'PASİF');
+
+                    toastr[aktif ? 'success' : 'warning'](
+                        aktif ? 'Yetki aktif edildi' : 'Yetki pasif edildi'
+                    );
+                }
+            }, 'json');
+        });
+
+        $(function() {
+            $('.yetki-btn').on('click', function() {
                 const el = $(this);
-                const field = el.data('field');
-                const id = el.closest('tr').data('id');
+                const user_id = el.closest('tr').data('id');         // kullanıcı
+                const yetki_id = el.data('yetki-id');               // ilgili yetki
                 const ldap_username = "<?= $ldap_username ?>";
                 const ip = "<?= $ip ?>";
                 const personelTC = "<?= $personelTC ?>";
 
-                $.post('yetkili/yetki_toggle.php', { id, field, ldap_username, ip, personelTC }, function(resp){
-                    if(resp.success){
-                        const yeniRenk = resp.yeni_durum == 1 ? '#28a745' : '#dc3545';
-                        const yeniYazi = resp.yeni_durum == 1 ? 'AKTİF' : 'PASİF';
-                        el.css('background', yeniRenk).text(yeniYazi);
+                $.post('yetkili/yetki_toggle.php', {
+                    id: user_id,
+                    yetki_id: yetki_id,
+                    ldap_username: ldap_username,
+                    ip: ip,
+                    personelTC: personelTC
+                }, function(resp) {
+                    if(resp.success) {
+                        const aktif = resp.yeni_durum == 1;
+                        const renk  = aktif ? '#28a745' : '#dc3545';
+                        const yazi  = aktif ? 'AKTİF' : 'PASİF';
 
-                        if(resp.yeni_durum == 1){
-                            toastr.success(field.toUpperCase() + ' yetkisi aktif edildi.');
+                        el.css('background', renk).text(yazi);
+
+                        if(aktif){
+                            toastr.success('Yetki aktif edildi.');
                         } else {
-                            toastr.warning(field.toUpperCase() + ' yetkisi pasif hale getirildi.');
+                            toastr.warning('Yetki pasif hale getirildi.');
                         }
                     } else {
                         alert('Hata: ' + resp.message);
@@ -154,43 +318,57 @@ if (empty($_GET['edit'])) { ?>
     <?php
 }
 else if (!empty($_GET['edit'])) {
-    $id=$purifier->purify(rescape((int)$_GET['edit']));
+    $id = (int)$purifier->purify(rescape($_GET['edit']));
 
     if ($_SERVER['REQUEST_METHOD'] == "POST") {
-        $adi = $purifier->purify(rescape($_POST['adi']));
-        $soyadi = $purifier->purify(rescape($_POST['soyadi']));
-        $username = $purifier->purify(rescape($_POST['username']))?:correctlink($adi.$soyadi);
-        $cep_telefonu = $purifier->purify(rescape($_POST['cep_telefonu']));
-        $mudurluk = $purifier->purify(rescape($_POST['mudurluk']));
-        $yetkili_durumu = $purifier->purify(rescape($_POST['yetkili_durumu'])) ? 1 : 0;
-        $admin = $purifier->purify(rescape($_POST['admin'])) ? 1 : 0;
-        $sifre = $purifier->purify(rescape($_POST['sifre'])) ? 1 : 0;
-        $yemekhane = $purifier->purify(rescape($_POST['yemekhane'])) ? 1 : 0;
-        $etkinlik_duyuru = $purifier->purify(rescape($_POST['etkinlik_duyuru'])) ? 1 : 0;
-        $yetkili_islemleri = $purifier->purify(rescape($_POST['yetkili_islemleri'])) ? 1 : 0;
-        $qrcode = $purifier->purify(rescape($_POST['qrcode'])) ? 1 : 0;
-        $formlar = $purifier->purify(rescape($_POST['formlar'])) ? 1 : 0;
-        $popup_yonetim = $purifier->purify(rescape($_POST['popup_yonetim'])) ? 1 : 0;
-        /*print_r($_POST);
-        exit();*/
+        $adi       = $purifier->purify(rescape($_POST['adi']));
+        $soyadi    = $purifier->purify(rescape($_POST['soyadi']));
+        $username  = $purifier->purify(rescape($_POST['username'])) ?: correctlink($adi.$soyadi);
+        $mudurluk  = $purifier->purify(rescape($_POST['mudurluk']));
+        $yetkili_durumu = (int)($_POST['yetkili_durumu'] ?? 0);
+        /* Yeni sistemde admin de dahil tüm yetkiler “yetkili_moduller” tablosundan gelir */
+        $yetkiler = $_POST['yetkiler'] ?? [];   // checkbox grubundan array gelir
 
         $hata = [];
-        if (empty($adi)) $hata[] = "<p>Yetkili adı giriniz</p>";
-        if (empty($soyadi)) $hata[] = "<p>Yetkili soyadı giriniz</p>";
-        if (empty($mudurluk)) $hata[] = "<p>Çalıştığı müdürlük seçiniz</p>";
+        if (empty($adi))      $hata[] = "Ad giriniz.";
+        if (empty($soyadi))   $hata[] = "Soyad giriniz.";
+        if (empty($mudurluk)) $hata[] = "Müdürlük seçiniz.";
 
-        if (!empty($hata)) alert_danger($hata);
-        else {
-            $q = $dba->query("UPDATE yetkili SET adi='$adi', soyadi='$soyadi',cep_telefonu='$cep_telefonu', mudurluk='$mudurluk', yetkili_durumu='$yetkili_durumu', admin='$admin', sifre='$sifre', yemekhane='$yemekhane', etkinlik_duyuru='$etkinlik_duyuru', yetkili_islemleri='$yetkili_islemleri', qrcode='$qrcode', formlar='$formlar', popup_yonetim='$popup_yonetim' WHERE id='$id' ");
-
-            if ($dba->affected_rows() > 0) {
-                alert_success("Yetkili başarıyla güncellenmiştir.");
-                $dba->addLog($ip, $ldap_username, $personelTC, "create", "Yetkili bilgileri güncellendi : ".$username);
+        if (!empty($hata)) {
+            alert_danger($hata);
+        } else {
+            /* === 1. yetkili tablosu güncelleme === */
+            $dba->query("UPDATE yetkili SET adi='$adi', soyadi='$soyadi', username='$username', mudurluk='$mudurluk', yetkili_durumu='$yetkili_durumu' WHERE id='$id'");
+            /* === 2. mevcut yetkileri temizle === */
+            $dba->query("DELETE FROM yetkili_moduller WHERE kullanici_id='$id'");
+            /* === 3. yeni yetkileri ekle === */
+            if (!empty($yetkiler)) {
+                foreach ($yetkiler as $key => $val) {
+                    $yetki_id = (int)$key;
+                    $dba->query("
+                        INSERT INTO yetkili_moduller (kullanici_id, yetki_key, deger)
+                        VALUES ('$id', '$yetki_id', 1)
+                    ");
+                }
             }
+            alert_success("Yetkili başarıyla güncellendi.");
+            $dba->addLog($ip, $ldap_username, $personelTC, "update", "Yetkili güncellendi: ".$username);
         }
     }
-    $q = $dba->query("SELECT * FROM yetkili WHERE id='$id' ");
+
+    /* === FORMU DOLDURMA — MEVCUT KULLANICI === */
+    $q = $dba->query("SELECT * FROM yetkili WHERE id='$id'");
     $row = $dba->fetch_assoc($q);
+
+    /* === KULLANICININ MEVCUT YETKİLERİ === */
+    $q2 = $dba->query("SELECT yetki_key FROM yetkili_moduller WHERE kullanici_id='$id'");
+    $aktif_yetkiler = [];
+    while ($rr = $dba->fetch_assoc($q2)) {
+        $aktif_yetkiler[] = (int)$rr['yetki_key'];
+    }
+
+    /* === TÜM YETKİ TANIMLARI === */
+    $allPerms = $dba->query("SELECT id, yetki, isim FROM mod_moduller ORDER BY isim ASC");
     ?>
     <div class="row">
         <div class="col-md-12">
@@ -245,55 +423,21 @@ else if (!empty($_GET['edit'])) {
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="box-header">
-                                <h3 class="box-title" style="text-decoration: underline">Menü Yetkilerini Seçiniz</h3>
-                            </div>
                             <div class="box-body">
                                 <div class="box-body">
-                                    <!-- Admin Checkbox -->
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="checkbox" id="adminCheck" name="admin" value="1" <?= ($row['admin']==1 ? 'checked' : '') ?>/> &nbsp;Admin Yetkisi
-                                        </label>
-                                    </div>
-                                    <hr style="margin: 5px">
-
-                                    <!-- Alt Yetkiler -->
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="checkbox" name="sifre" class="perm-checkbox" value="1" <?= strip($row['sifre'])==1 ? 'checked':'' ?>/> &nbsp;LDAP Şifre Sıfırlama Yetkisi
-                                        </label>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="checkbox" name="yemekhane" class="perm-checkbox" value="1" <?= strip($row['yemekhane'])==1 ? 'checked':'' ?>/> &nbsp;Yemek Listesi Ekleme Yetkisi
-                                        </label>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="checkbox" name="etkinlik_duyuru" class="perm-checkbox" value="1" <?= strip($row['etkinlik_duyuru'])==1 ? 'checked':'' ?>/> &nbsp;Etkinlik-Duru Ekleme-Silme Yetkisi
-                                        </label>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="checkbox" name="yetkili_islemleri" class="perm-checkbox" value="1" <?= strip($row['yetkili_islemleri'])==1 ? 'checked':'' ?>/> &nbsp;Yetkili İşlemleri Yetkisi
-                                        </label>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="checkbox" name="qrcode" class="perm-checkbox" value="1" <?= strip($row['qrcode'])==1 ? 'checked':'' ?>/> &nbsp;QR İşlemleri Yetkisi
-                                        </label>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="checkbox" name="formlar" class="perm-checkbox" value="1" <?= strip($row['formlar'])==1 ? 'checked':'' ?>/> &nbsp;Form Ekleme Yetkisi
-                                        </label>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="checkbox" name="popup_yonetim" class="perm-checkbox" value="1" <?= strip($row['popup_yonetim'])==1 ? 'checked':'' ?>/> &nbsp;Popup Yönetim Yetkisi
-                                        </label>
-                                    </div>
+                                    <h3 class="box-title" style="text-decoration: underline;">Menü Yetkilerini Seçiniz</h3>
+                                    <?php while ($p = $dba->fetch_assoc($allPerms)) { ?>
+                                        <div class="form-group">
+                                            <label>
+                                                <input type="checkbox"
+                                                       name="yetkiler[<?= $p['id'] ?>]"
+                                                       value="1"
+                                                    <?= in_array($p['id'], $aktif_yetkiler) ? 'checked' : '' ?>
+                                                />
+                                                &nbsp; <?= strip($p['isim']) ?>
+                                            </label>
+                                        </div>
+                                    <?php } ?>
                                 </div>
                             </div>
                         </div>

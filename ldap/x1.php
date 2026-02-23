@@ -15,7 +15,8 @@ if (isset($_GET['q'])) {
     // 🔹 Arama yapılacak OU’lar:
     $ou_list = ["OU=Cankaya Belediyesi,DC=cankaya,DC=bel,DC=tr"];
     $ou_list[] = "OU=Sirketler,DC=cankaya,DC=bel,DC=tr";
-    $filter = "(&(|(displayName=*$search*)(samaccountname=*$search*))(|(userAccountControl=512)(userAccountControl=66048)))";
+    $ou_list[] = "OU=Firmalar,DC=cankaya,DC=bel,DC=tr";
+    $filter = "(&(|(displayName=*$search*)(samaccountname=*$search*)(ipphone=*$search*))(|(userAccountControl=512)(userAccountControl=66048)))";
 
     if ($includeDisabled && ($_SESSION['sifre']==1 || $_SESSION['admin']==1)) {
         $ou_list[] = "OU=Disabled,DC=cankaya,DC=bel,DC=tr";
@@ -36,7 +37,7 @@ if (isset($_GET['q'])) {
 
     foreach ($ou_list as $ldap_dn) {
         $result = @ldap_search($ldap, $ldap_dn, $filter, [
-            "displayname", "mail", "samaccountname", "dn", "telephonenumber", "ipphone", "info", "department"
+            "displayname", "mail", "samaccountname", "facsimileTelephoneNumber", "dn", "telephonenumber", "ipphone", "info", "department"
         ]);
 
         if ($result) {
@@ -45,6 +46,7 @@ if (isset($_GET['q'])) {
                 $data[] = [
                     "displayname" => $entries[$i]["displayname"][0] ?? "",
                     "username" => $entries[$i]["samaccountname"][0] ?? "",
+                    "facsimileTelephoneNumber" => $entries[$i]["facsimiletelephonenumber"][0] ?? "",
                     "mail" => $entries[$i]["mail"][0] ?? "",
                     "telephone" => $entries[$i]["telephonenumber"][0] ?? "",
                     "ipPhone" => $entries[$i]["ipphone"][0] ?? "",
@@ -68,7 +70,7 @@ if (isset($_GET['q'])) {
     });
 
     // --- SAYFALAMA AYARLARI ---
-    $perPage = ($_SESSION['sifre']==1 || $_SESSION['admin']==1) ? 12 : 20;
+    $perPage = ($_SESSION['sifre']==1 || $_SESSION['admin']==1) ? 8 : 20;
     $total = count($data);
     $totalPages = ceil($total / $perPage);
     $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
@@ -87,21 +89,18 @@ if (isset($_GET['q'])) {
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.8rem; margin: 1rem 0;">
         <input type="text" id="searchInput" placeholder="Personel Bilgisi Giriniz..." style="width: 390px; padding: 0.5rem 1rem; border-radius: 0.5rem; border: 1px solid #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-size: 1.8rem;" onkeypress="if(event.key === 'Enter'){ doSearch(); }" autocomplete="off" value="<?= htmlspecialchars($search ?? '') ?>">
         <button onclick="doSearch()" style="padding: 0.5rem 1.2rem; border-radius: 0.5rem; background-color: #007bff; color: white; border: none; font-size: 1.8rem; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1);"> Ara </button>
-
         <?php if ($_SESSION['sifre']==1 || $_SESSION['admin']==1): ?>
             <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.6rem; margin-left: 1rem;">
                 <input type="checkbox" id="includeDisabled" <?= $includeDisabled ? 'checked' : '' ?> onchange="doSearch()">
                 Pasif Kullanıcıları Dahil Et
             </label>
         <?php endif; ?>
-
         <?php if (isset($total)): ?>
             <span style="margin-left: auto; font-size: 1.6rem; color: #555;">
                 Toplam <strong><?= $total ?></strong> sonuç bulundu.
             </span>
         <?php endif; ?>
     </div>
-
     <div id="results" class="row">
         <?php if (!empty($pagedData)): ?>
             <?php foreach ($pagedData as $user): ?>
@@ -113,16 +112,16 @@ if (isset($_GET['q'])) {
                                 <?php endif; ?></h3>
                         </div>
                         <div class="card-body" style="padding: 0 10px 10px">
-                            <p class="card-text">
+                            <p class="card-text" style="    min-height: 160px;">
                                 <?php if ($_SESSION['sifre']==1 || $_SESSION['admin']==1): ?>
                                     <strong>TC: </strong> <?= htmlspecialchars($user['info']) ?><br>
                                     <strong>Kullanıcı Adı: </strong> <?= htmlspecialchars($user['username']) ?><br>
                                     <strong>Telefon: </strong> <?= htmlspecialchars($user['telephone'] ?: '-') ?><br>
                                     <strong>Müdürlük: </strong> <?= buyuk_harfe_cevir(htmlspecialchars($user['department'] ?: '-')) ?><br>
+                                    <strong>Kart Numarası: </strong> <?= htmlspecialchars($user['facsimileTelephoneNumber']) ?><br>
                                 <?php endif; ?>
                                 <strong>E-posta: </strong> <?= htmlspecialchars($user['mail'] ?: '-') ?><br>
                                 <strong>Dahili: </strong> <?= htmlspecialchars($user['ipPhone'] ?: '-') ?><br>
-
                             </p>
                             <?php if ($_SESSION['sifre']==1 || $_SESSION['admin']==1): ?>
                                 <div style="display:flex; justify-content:space-between; margin-top:10px;">

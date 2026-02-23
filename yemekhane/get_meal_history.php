@@ -8,12 +8,9 @@ if (!isset($_POST['cardUserId']) || empty($_POST['cardUserId'])) {
     exit;
 }
 
-$cardUserId = (int)$_POST['cardUserId'];
+$cardUserId = $_POST['cardUserId'];
 
-$sql = "SELECT id, startDate, finishDate FROM cardmealallowement
-        WHERE cardUserId = $cardUserId
-        ORDER BY id DESC
-        LIMIT 3";
+$sql = "SELECT id, startDate, finishDate FROM cardmealallowement WHERE tckn = $cardUserId /*AND finishDate < CURDATE()*/ ORDER BY id DESC LIMIT 6";
 $res = $dba->query($sql);
 
 $rows = [];

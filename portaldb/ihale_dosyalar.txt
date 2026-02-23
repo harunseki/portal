@@ -1,8 +1,0 @@
-"id"	"baslik"	"dosya_adi"	"uploaded_by"	"created_at"
-"6"		"68dbb3fb6fe73.pdf"		"30/9/2025 13:42:03"
-"7"	"Deneme Harun 2"	"68dbc06ee186e.pdf"		"30/9/2025 14:35:10"
-"8"	"Deneme oktay 2"	"68dbc06ee26a2.pdf"		"30/9/2025 14:35:10"
-"9"	"Deneme Oktay harun 1"	"68dbc06ee342e.Pdf"		"30/9/2025 14:35:10"
-"10"	"Deneme Harun Oktay 2"	"68dbc25de57e5.pdf"		"30/9/2025 14:43:25"
-"15"	"Deneme Oktay Alii 2"	"68dbc4e008a5c.docx"		"30/9/2025 14:54:08"
-"16"	"ALO"	"68dbd5866a8b6.docx"		"30/9/2025 16:05:10"

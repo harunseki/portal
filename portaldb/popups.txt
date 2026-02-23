@@ -1,3 +1,0 @@
-"id"	"baslik"	"icerik"	"kategori"	"aktif"	"baslangic_tarihi"	"bitis_tarihi"	"olusturma_tarihi"
-"13"	"Deneme"	"deneme"	"duyuru"	"1"	"16/10/2025 16:00:00"	"16/10/2025 16:02:00"	"16/10/2025 16:01:20"
-"14"	"Bilgilendirme"	"Rehber alanımız güncellenmiştir. Personel dahilileri haricinde, müdürlüklerin ve birimlerin dahili numaralarını sorgulayabileceğiniz alanımız eklenmiştir."	"bilgi"	"1"	"20/10/2025 11:41:00"	"24/10/2025 11:41:00"	"20/10/2025 11:41:57"

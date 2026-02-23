@@ -59,7 +59,7 @@ body > .header {
 /*right side - contins main content*/
 .right-side {
   /*background-color: #f9f9f9;*/
-  margin-left: 220px;
+  margin-left: 217px;
 }
 /*left side - contains sidebar*/
 .left-side {
@@ -86,7 +86,7 @@ body > .header {
 /*Give content full width on xs screens*/
 @media screen and (max-width: 992px) {
   .right-side {
-    margin-left: 0;
+    /*margin-left: 0;*/
   }
 }
 /*

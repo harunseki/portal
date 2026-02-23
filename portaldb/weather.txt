@@ -1,2 +1,0 @@
-"id"	"city"	"description"	"temperature"	"windspeed"	"humidity"	"weathercode"	"created_at"
-"1"	"Ankara"	"Parçalı Bulutlu"	"17.6"	"3.2"	"36"	"2"	"3/11/2025 13:06:16"

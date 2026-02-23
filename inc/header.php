@@ -4,17 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if ($_SERVER['REMOTE_ADDR']=="10.2.200.79") {
-    $_SESSION['admin'] = "1";
-    $admin = $_SESSION['admin'];
-}
 error_reporting(E_ALL & ~E_WARNING & ~E_DEPRECATED);
-
-$ldap_host = "ldap://10.1.1.21";
-$ldap_port = 389;
-$ldap_user = "cankaya\\smsadmin";
-$ldap_pass = "Telefon01*";
-$ldap_dn   = "DC=cankaya,DC=bel,DC=tr";
 
 // 🔹 Kullanıcı adı Remote User'dan alınıyor
 $remoteUser = $_SERVER['REMOTE_USER'] ?? $_SERVER['AUTH_USER'] ?? 'Bilinmiyor';
@@ -31,72 +21,148 @@ if (strpos($remoteUser, "\\") !== false) {
     $ldap_username = $remoteUser;
 }
 
-// 🔹 LDAP bağlantısı
-$ldap = ldap_connect($ldap_host, $ldap_port);
-if (!$ldap) die("LDAP sunucusuna bağlanılamadı!");
-
-// 🔹 Seçenekler
-ldap_set_option($ldap, LDAP_OPT_PROTOCOL_VERSION, 3);
-ldap_set_option($ldap, LDAP_OPT_REFERRALS, 0);
-
-// 🔹 Bind işlemi
-if (!@ldap_bind($ldap, $ldap_user, $ldap_pass)) {
-    die("LDAP Bind Başarısız! Hata: " . ldap_error($ldap));
-}
-if ($ldap_username=="harunseki") {
-    /*$ldap_username="pelinarslan";*/
+if ($_SERVER['REMOTE_ADDR']=="10.2.200.79") {
+    $admin = 1;
+        /*$ldap_username ="sibelkoksal";*/
 }
 
-// 🔹 Kullanıcıyı bul
-$filter = "(samaccountname=$ldap_username)";
-$attributes = ["displayname", "facsimileTelephoneNumber", "mail", "telephonenumber", "ipphone", "info", "department"];
-$result = @ldap_search($ldap, $ldap_dn, $filter, $attributes);
-if (!$result) die("LDAP Araması Başarısız! Hata: " . ldap_error($ldap));
+$sessionTimeout = 1800; // 30 dakika
 
-$entries = ldap_get_entries($ldap, $result);
-/*if ($ldap_username=="fundasahin"){
-    print_r($entries);
-}*/
-if ($entries["count"] > 0) {
-    $cn                 = $entries[0]["displayname"][0] ?? 'Veri yok';
-    $personelSicilNo    = $entries[0]["facsimiletelephonenumber"][0] ?? 'Veri yok';
-    $mail               = $entries[0]["mail"][0] ?? '';
-    $telephonenumber    = $entries[0]["telephonenumber"][0] ?? 'Veri yok';
-    $ipphone            = $entries[0]["ipphone"][0] ?? 'Veri yok';
-    $personelTC         = $entries[0]["info"][0] ?? 'Veri yok';
-    $department         = $entries[0]["department"][0] ?? 'Veri yok';
+$needLdap = false;
 
-    // 🔹 Türkçe karakterlerle düzgün büyük harfe çevirme
-    $replace = [
-        'i' => 'İ', 'ı' => 'I', 'ğ' => 'Ğ', 'ü' => 'Ü',
-        'ş' => 'Ş', 'ö' => 'Ö', 'ç' => 'Ç'
-    ];
-    $cnUpper = strtr(mb_strtoupper($cn, 'UTF-8'), $replace);
+if (!isset($_SESSION['ldap_username'])) {
+    $needLdap = true;
+}
+elseif (isset($_SESSION['ldap_last_check']) && (time() - $_SESSION['ldap_last_check'] > $sessionTimeout)) {
+    $needLdap = true;
+}
+elseif ($_SESSION['ldap_username'] !== $ldap_username) {
+    $needLdap = true;
+}
+$personelTC = "";
+$cn = "";
+if ($needLdap) {
+    $ldap_host = "ldap://10.1.1.21";
+    $ldap_port = 389;
+    $ldap_user = "cankaya\\smsadmin";
+    $ldap_pass = "Telefon01*";
+    $ldap_dn   = "DC=cankaya,DC=bel,DC=tr";
 
-    // 🔹 Mail boşsa alternatif olarak userPrincipalName denenebilir
-    if (empty($mail) && isset($entries[0]['userprincipalname'][0])) {
-        $mail = $entries[0]['userprincipalname'][0];
+    $ldap = null;
+
+    try {
+        // 🔹 Bağlantı
+        $ldap = @ldap_connect($ldap_host, $ldap_port);
+
+        if (!$ldap) {
+            throw new Exception("LDAP sunucusuna bağlanılamadı");
+        }
+
+        ldap_set_option($ldap, LDAP_OPT_PROTOCOL_VERSION, 3);
+        ldap_set_option($ldap, LDAP_OPT_REFERRALS, 0);
+        ldap_set_option($ldap, LDAP_OPT_NETWORK_TIMEOUT, 5);
+
+        // 🔹 Bind
+        if (!@ldap_bind($ldap, $ldap_user, $ldap_pass)) {
+            throw new Exception("LDAP bind başarısız: " . ldap_error($ldap));
+        }
+
+        // LDAP injection koruması
+        $ldap_username = ldap_escape($ldap_username, '', LDAP_ESCAPE_FILTER);
+
+        $filter = "(samaccountname={$ldap_username})";
+        $attributes = [
+                "displayname",
+                "facsimileTelephoneNumber",
+                "mail",
+                "telephonenumber",
+                "ipphone",
+                "info",
+                "department",
+                "userprincipalname"
+        ];
+
+        $result = @ldap_search($ldap, $ldap_dn, $filter, $attributes);
+
+        if (!$result) {
+            throw new Exception("LDAP arama hatası: " . ldap_error($ldap));
+        }
+
+        $entries = ldap_get_entries($ldap, $result);
+
+        if ($entries["count"] <= 0) {
+            throw new Exception("LDAP kullanıcısı bulunamadı");
+        }
+
+        $entry = $entries[0];
+
+        $cn              = $entry["displayname"][0] ?? 'Veri yok';
+        $personelSicilNo = $entry["facsimiletelephonenumber"][0] ?? 'Veri yok';
+        $mail            = $entry["mail"][0] ?? '';
+        $telephonenumber = $entry["telephonenumber"][0] ?? 'Veri yok';
+        $ipphone         = $entry["ipphone"][0] ?? 'Veri yok';
+        $personelTC      = $entry["info"][0] ?? 'Veri yok';
+        $department      = $entry["department"][0] ?? 'Veri yok';
+        $cardNumber      = $entry["facsimiletelephonenumber"][0] ?? 'Veri yok';
+
+        // Mail fallback
+        if (empty($mail) && isset($entry['userprincipalname'][0])) {
+            $mail = $entry['userprincipalname'][0];
+        }
+
+        if (!filter_var($mail, FILTER_VALIDATE_EMAIL)) {
+            $mail = "mail@cankaya.bel.tr";
+        }
+
+        // Türkçe büyük harf dönüşümü
+        $replace = [
+                'i' => 'İ', 'ı' => 'I', 'ğ' => 'Ğ',
+                'ü' => 'Ü', 'ş' => 'Ş',
+                'ö' => 'Ö', 'ç' => 'Ç'
+        ];
+        $cnUpper = strtr(mb_strtoupper($cn, 'UTF-8'), $replace);
+
+        // 🔹 Session set
+        $_SESSION['ldap_username']   = $ldap_username;
+        $_SESSION['personelTC']      = $personelTC;
+        $_SESSION['personelSicilNo'] = $personelSicilNo;
+        $_SESSION['kullanici_adi']   = $cn;
+        $_SESSION['kullanici_adi1']  = $cnUpper;
+        $_SESSION['mail']            = $mail;
+        $_SESSION['telephonenumber'] = $telephonenumber;
+        $_SESSION['ipphone']         = $ipphone;
+        $_SESSION['department']      = $department;
+        $_SESSION['cardNumber']      = $cardNumber;
+        $_SESSION['ldap_last_check'] = time();
+
+    } catch (Exception $e) {
+
+        // 🔴 Gerçek hatayı kullanıcıya gösterme
+        error_log("LDAP Bağlantı Hatası: " . $e->getMessage());
+
+        // Session temizle
+        session_unset();
+        session_destroy();
+
+        // Kullanıcı dostu mesaj
+        header("Location: /bakim.php");
+        exit;
+
+    } finally {
+        // 🔹 GARANTİLİ BAĞLANTI KAPAMA
+        if ($ldap) {
+            @ldap_unbind($ldap);
+        }
     }
-
-    // 🔹 Mail adresi güvenli mi kontrol et
-    if (!filter_var($mail, FILTER_VALIDATE_EMAIL)) {
-        $mail = "mail@cankaya.bel.tr";
-    }
-
-    // 🔹 Session değişkenlerine kaydet
-    $_SESSION['ldap_username'] = $ldap_username;
-    $_SESSION['personelTC'] = $personelTC;
-    $_SESSION['personelSicilNo'] = $personelSicilNo;
-    $_SESSION['kullanici_adi'] = $cnUpper;
-    $_SESSION['mail'] = $mail;
-    $_SESSION['telephonenumber'] = $telephonenumber;
-    $_SESSION['ipphone'] = $ipphone;
-    $_SESSION['department'] = $department;
 }
+else {
+    $personelTC = $_SESSION['personelTC'];
+    $cn = $_SESSION['kullanici_adi'];
+}
+
 require_once("class/mysql.php");
 require_once("../class/functions.php");
 
-// 🔹 HTML Purifier
 require_once ("../htmlpurifier/library/HTMLPurifier.auto.php");
 $config = HTMLPurifier_Config::createDefault();
 $config->set('Core.Encoding', 'UTF-8');
@@ -105,23 +171,55 @@ $purifier = new HTMLPurifier($config);
 $def = $config->getHTMLDefinition(true);
 $def->addAttribute('div', 'data-tab-set-title', 'CDATA');
 
-// 🔹 Yetkili tablosundan bilgileri al
-$q = $dba->query("SELECT * FROM yetkili WHERE username='$ldap_username' AND yetkili_durumu='1' ");
-$row = $dba->fetch_assoc($q);
-if ($row) {
-    $_SESSION['admin'] = $row['admin'] ?? '';
-    if (intval($_SESSION['admin']) !== 1) {
-        $_SESSION['sifre']             = $row['sifre'] ?? '';
-        $_SESSION['yemekhane']         = $row['yemekhane'] ?? '';
-        $_SESSION['etkinlik_duyuru']   = $row['etkinlik_duyuru'] ?? '';
-        $_SESSION['yetkili_islemleri'] = $row['yetkili_islemleri'] ?? '';
-        $_SESSION['qrcode']            = $row['qrcode'] ?? '';
-        $_SESSION['formlar']           = $row['formlar'] ?? '';
-        $_SESSION['formlar']           = $row['formlar'] ?? '';
+$qUser = $dba->prepare("SELECT id, mudurluk FROM yetkili WHERE username=? AND yetkili_durumu='1'");
+$qUser->bind_param("s", $ldap_username);
+$qUser->execute();
+$resUser = $qUser->get_result();
+$user = $resUser->fetch_assoc();
+
+$_SESSION['permissions'] = [];
+$_SESSION['active_permissions'] = [];
+
+if ($user) {
+    $kullanici_id = $user['id'];
+    $_SESSION['kullanici_mudurluk'] = $user['mudurluk'];
+    $_SESSION['kullanici_id'] = $kullanici_id;
+
+    $q = $dba->prepare("SELECT yt.id AS yetki_id, yt.yetki AS yetki_key, yt.isim  AS yetki_label, COALESCE(ym.deger,0) AS deger FROM mod_moduller yt
+                        LEFT JOIN yetkili_moduller ym ON ym.yetki_key = yt.id AND ym.kullanici_id = ?
+                        WHERE yt.aktif IN (1,5)
+                        ORDER BY yt.isim ASC ");
+    $q->bind_param("i", $kullanici_id);
+    $q->execute();
+    $result = $q->get_result();
+
+    $_SESSION['permissions'] = [];
+    $_SESSION['active_permissions'] = [];
+
+    while ($row = $result->fetch_assoc()) {
+        $item = [
+            'id'    => (int)$row['yetki_id'],
+            'key'   => $row['yetki_key'],
+            'label' => $row['yetki_label'],
+            'value' => (int)$row['deger']
+        ];
+        $_SESSION['permissions'][$row['yetki_id']] = $item;
+        // Eski sistem uyumluluğu
+        $_SESSION[$row['yetki_key']] = (int)$row['deger'];
+
+        if ($item['value'] === 1) {
+            $_SESSION['active_permissions'][$row['yetki_id']] = $item;
+        }
     }
 }
-else {
-    session_destroy();
+
+$hasPermission = false;
+
+foreach ($_SESSION['permissions'] ?? [] as $perm) {
+    if ($perm['value'] == 1) {
+        $hasPermission = true;
+        break;
+    }
 }
 
 $x = isset($_GET['x']) ? $purifier->purify(rescape($_GET['x'])) : null;
@@ -135,40 +233,29 @@ $display3 = "";
     <title>Portal Çankaya</title>
     <meta content='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' name='viewport'>
     <link rel="icon" type="image/x-icon" sizes="96x96" href="img/favicon.ico">
-    <!-- bootstrap 3.0.2 -->
+
     <link href="assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
-    <!-- font Awesome -->
     <link href="assets/css/font-awesome.min.css" rel="stylesheet" type="text/css" />
-    <!-- Ionicons -->
     <link href="assets/css/ionicons.min.css" rel="stylesheet" type="text/css" />
-    <!-- Morris chart -->
     <link href="assets/css/morris/morris.css" rel="stylesheet" type="text/css" />
-    <!-- jvectormap -->
     <link href="assets/css/jvectormap/jquery-jvectormap-1.2.2.css" rel="stylesheet" type="text/css" />
-    <!-- fullCalendar -->
     <link href="assets/css/fullcalendar/fullcalendar.css" rel="stylesheet" type="text/css" />
-    <!-- Daterange picker -->
     <link href="assets/css/daterangepicker/daterangepicker-bs3.css" rel="stylesheet" type="text/css" />
-    <!-- bootstrap wysihtml5 - text editor -->
     <link href="assets/css/bootstrap-wysihtml5/bootstrap3-wysihtml5.min.css" rel="stylesheet" type="text/css" />
-    <!-- Theme style -->
     <link href="assets/css/AdminLTE.css" rel="stylesheet" type="text/css" />
+    <!-- jQuery (ÖNCE GELMELİ) -->
+    <script src="assets/js/jquery-2.1.4.min.js"></script>
+    <!-- Chosen CSS (Select2 ile çakışmaz, sadece class kullanmazsan sorun yok) -->
     <link rel="stylesheet" href="assets/css/chosen.css">
     <!-- Toastr CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
-    <!-- Font Awesome 6 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
-    <!--[if lt IE 9]>
-    <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
-    <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
-    <![endif]-->
-    <script src="assets/js/jquery-2.1.4.min.js"></script>
+    <link rel="stylesheet" href="assets/css/toastr/toastr.min.css" />
+    <!-- Chosen JS -->
+    <script src="assets/js/chosen.jquery.js"></script>
     <!-- Toastr JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="assets/js/toastr/toastr.min.js"></script>
 </head>
 <body class="skin-blue" lang="tr">
-    <a href="index.php" class="fixed-ataturk-link">
+    <a href="index" class="fixed-ataturk-link">
         <img src="img/ataturk1.png" class="fixed-ataturk">
     </a>
     <style>
@@ -183,7 +270,6 @@ $display3 = "";
             height: 140px;
             transition: transform 0.2s ease;
         }
-
         /* Hover efekti istersen */
         .fixed-ataturk-link:hover .fixed-ataturk {
             transform: scale(1.05);
@@ -193,7 +279,7 @@ $display3 = "";
         <!--<a href="index.php" class="logo"  style="text-transform: uppercase; font-size: 15px; padding-left: 0 !important;" >
             <img src="img/ata.png" align="left" height="100%" style="float:left;"><img src="img/cankaya1.png" align="left" height="80%" style="align-items: center; margin: 5px"></a>-->
         <nav class="navbar navbar-static-top" role="navigation" style="display: inline;">
-            <a href="index.php">
+            <a href="index">
                 <img src="img/logo5.png" align="left" style="height:60px;float:left; margin-left: 215px; margin-top: -10px;">
             </a>
             <div class="navbar-right" style="margin-right: 15px;">
@@ -296,7 +382,6 @@ $display3 = "";
                         ?>
                         <?= $icon ?> &nbsp; <?= htmlspecialchars($desc) ?> | 🌡 <?= htmlspecialchars(round($temp)) ?>°C | 💨 <?= htmlspecialchars(round($wind)) ?> km/h | 💧 Nem: <?= htmlspecialchars($humidity) ?>%
                     </div>
-
                     <!-- Kullanıcı menüsü -->
                     <ul class="nav navbar-nav">
                         <li class="dropdown user user-menu">
@@ -310,7 +395,7 @@ $display3 = "";
                                 </li>
                                 <li class="user-footer">
                                     <div class="pull-left">
-                                        <a href="yetkili.php?x=3&edit=<?= $ldap_username ?>" class="btn btn-default btn-flat">Bilgilerim</a>
+                                        <a href="<?= $ldap_username ?>-3-yetkili" class="btn btn-default btn-flat">Bilgilerim</a>
                                     </div>
                                     <div class="pull-right">
                                         <a href="#" onclick="logoutAndClose()" class="btn btn-default btn-flat">Çıkış</a>

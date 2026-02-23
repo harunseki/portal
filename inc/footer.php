@@ -1,6 +1,5 @@
-</div><!-- ./wrapper -->
-<!-- jQuery 2.0.2 -->
-<script src="assets/js/jquery-2.0.2.min.js"></script>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <!-- jQuery UI 1.10.3 -->
 <script src="assets/js/jquery-ui-1.10.3.min.js" type="text/javascript"></script>
 <!-- Sparkline -->
@@ -9,7 +8,8 @@
 <script src="assets/js/plugins/jvectormap/jquery-jvectormap-1.2.2.min.js" type="text/javascript"></script>
 <script src="assets/js/plugins/jvectormap/jquery-jvectormap-world-mill-en.js" type="text/javascript"></script>
 <!-- fullCalendar -->
-<script src="assets/js/plugins/fullcalendar/fullcalendar.min.js" type="text/javascript"></script>
+<script src="assets/js/plugins/fullcalendar/index.global.min.js" type="text/javascript"></script>
+<!--<script src="assets/js/plugins/fullcalendar/fullcalendar.min.js" type="text/javascript"></script>-->
 <!-- jQuery Knob Chart -->
 <script src="assets/js/plugins/jqueryKnob/jquery.knob.js" type="text/javascript"></script>
 <!-- daterangepicker -->
@@ -37,8 +37,47 @@
     });
 </script>
 <script src="assets/js/plugins/input-mask/jquery.inputmask.js" type="text/javascript"></script>
+<!-- DATA TABES SCRIPT -->
+<script src="assets/js/plugins/datatables/jquery.dataTables.js" type="text/javascript"></script>
+<script src="assets/js/plugins/datatables/dataTables.bootstrap.js" type="text/javascript"></script>
 <!-- AdminLTE App -->
 <script src="assets/js/AdminLTE/app.js" type="text/javascript"></script>
+<!-- page script -->
+<script type="text/javascript">
+    $(function() {
+        // Plugin API değil, yeni DataTables API'si:
+        $('#example1').DataTable({
+            paging: true,
+            lengthChange: false,
+            searching: false,
+            ordering: true,
+            info: true,
+            autoWidth: false,
+            responsive: true  // okların responsive kapsayıcıda bozulmasını da önler
+        });
+
+        $('#example2').DataTable({
+            paging: true,
+            lengthChange: false,
+            searching: false,
+            ordering: true,
+            info: true,
+            autoWidth: false,
+            responsive: true
+        });
+
+        $('#pdksTable').DataTable({
+            paging: true,
+            lengthChange: false,
+            searching: false,
+            ordering: true,
+            info: true,
+            autoWidth: false,
+            responsive: true
+        });
+
+    });
+</script>
 <script type="text/javascript">
     $(function () {
 // Replace the <textarea id="editor1"> with a CKEditor
@@ -67,19 +106,16 @@
     })
 </script>
 <script type="text/javascript">
-
-    // Toastr ayarları (sayfanın ortası ve 1 sn ekranda)
     toastr.options = {
         "closeButton": false,
         "debug": false,
         "newestOnTop": true,
-        "progressBar": false,
+        "progressBar": true,
         "positionClass": "toast-bottom-right",
         "preventDuplicates": true,
         "onclick": null,
         "showDuration": "300",
         "hideDuration": "300",
-        "timeOut": "2000",
         "extendedTimeOut": "500",
         "showEasing": "swing",
         "hideEasing": "linear",
@@ -87,7 +123,6 @@
         "hideMethod": "fadeOut"
     };
     $(function() {
-
         //Datemask dd/mm/yyyy
         $("#datemask").inputmask("dd/mm/yyyy", {"placeholder": "dd/mm/yyyy"});
 

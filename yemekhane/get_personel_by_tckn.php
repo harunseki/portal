@@ -1,6 +1,4 @@
 <?php
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
 header('Content-Type: application/json; charset=utf-8');
 require_once("../class/mysql.php");
 
@@ -13,13 +11,8 @@ if (strlen($tckn) != 11) {
 }
 
 /* 🔹 1. Yerel carduser tablosunda kontrol */
-$sql = "
-    SELECT id, cardNumber, TCKN, adi, soyadi, sicilNo, cardDepartment
-    FROM carduser
-    WHERE TCKN = '$tckn' 
-       OR sicilNo IN (SELECT sicilNo FROM carduser WHERE sicilNo != '' AND TCKN = '$tckn')
-    LIMIT 1
-";
+$sql = "SELECT id, cardNumber, TCKN, adi, soyadi, sicilNo, cardDepartment FROM carduser
+        WHERE TCKN = '$tckn' OR sicilNo IN (SELECT sicilNo FROM carduser WHERE sicilNo != '' AND TCKN = '$tckn') LIMIT 1";
 $exists = $dba->query($sql);
 
 if ($exists && $exists->num_rows > 0) {
@@ -43,7 +36,7 @@ $headers = [
     "Authorization: applicationkey=PRONETA,requestdate=2025-05-02T15:02:47+03:00,md5hashcode=9ead7fa09a505ba912689a4deffb55ab",
     "Content-Type: application/json",
 ];
-$postData = "datasetName=PRONETA_PERSONEL_YAZILIM&parameters={TCKIMLIKNO:'{$tckn}',DURUMU:'',USERNAME:'',ALTTURU:''}";
+$postData = "datasetName=PRONETA_PERSONEL_YAZILIM&parameters={TCKIMLIKNO:'{$tckn}',DURUMU:'',USERNAME:'',ALTTURU:'',MUDURLUK:'',STATU_TURU:''}";
 
 $ch = curl_init($url);
 curl_setopt_array($ch, [
@@ -78,6 +71,9 @@ if ($ekGosterge !== '') {
         $departmentId = $res->fetch_assoc()['id'];
     }
 }
+else {
+    $departmentId = '20';
+}
 
 /* 🔹 4. Servis verisine göre mevcut kullanıcı kontrolü */
 $adi = addslashes($person['ADI']);
@@ -85,15 +81,9 @@ $soyadi = addslashes($person['SOYADI']);
 $sicilNo = addslashes($person['SICIL_NO']);
 $tckn = addslashes($person['TCKN']);
 
-$checkExisting = $dba->query("
-    SELECT id, cardNumber 
-    FROM carduser 
-    WHERE (sicilNo = '$sicilNo' OR (adi = '$adi' AND soyadi = '$soyadi'))
-    LIMIT 1
-");
-
 $existingCardNumber = null;
 $newUserId = null;
+$checkExisting = $dba->query("SELECT id, cardNumber FROM carduser WHERE (sicilNo = '$sicilNo' OR (adi = '$adi' AND soyadi = '$soyadi')) LIMIT 1");
 
 if ($checkExisting && $checkExisting->num_rows > 0) {
     // Aynı kişi zaten var, sadece cardNumber bilgisini döndür
@@ -104,10 +94,7 @@ if ($checkExisting && $checkExisting->num_rows > 0) {
 else if ($cardNumber) {
     // Yeni kişi oluştur
     $dept = $departmentId ? (int)$departmentId : 'NULL';
-    $dba->query("
-        INSERT INTO carduser (cardNumber, TCKN, adi, soyadi, sicilNo, cardDepartment)
-        VALUES ('$cardNumber', '$tckn', '$adi', '$soyadi', '$sicilNo', $dept)
-    ");
+    $dba->query("INSERT INTO carduser (cardNumber, TCKN, adi, soyadi, sicilNo, cardDepartment) VALUES ('$cardNumber', '$tckn', '$adi', '$soyadi', '$sicilNo', $dept)");
     $newUserId = $dba->insert_id;
 }
 

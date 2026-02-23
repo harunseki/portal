@@ -1,5 +1,5 @@
 ﻿<?php
-if (empty($_SESSION['yetkili_islemleri']) AND empty($_SESSION['admin']) ) {
+if (empty($_SESSION['yetkili_islemleri']) AND empty($_SESSION['admin']) AND empty($admin)) {
     // Yetkisiz erişim
     http_response_code(403); // 403 Forbidden
     ?>
@@ -41,39 +41,35 @@ if (empty($_SESSION['yetkili_islemleri']) AND empty($_SESSION['admin']) ) {
     exit();
 }
 if ($_SERVER['REQUEST_METHOD'] == "POST") {
-    $adi = $purifier->purify(rescape($_POST['adi']));
-    $soyadi = $purifier->purify(rescape($_POST['soyadi']));
-    $username = $purifier->purify(rescape($_POST['username']))?:correctlink($adi.$soyadi);
-    $cep_telefonu = $purifier->purify(rescape($_POST['cep_telefonu']));
-    $mudurluk = $purifier->purify(rescape($_POST['mudurluk']));
-    $admin = $purifier->purify(rescape($_POST['admin'])) ? 1 : 0;
-    $sifre = $purifier->purify(rescape($_POST['sifre'])) ? 1 : 0;
-    $yemekhane = $purifier->purify(rescape($_POST['yemekhane'])) ? 1 : 0;
-    $etkinlik_duyuru = $purifier->purify(rescape($_POST['etkinlik_duyuru'])) ? 1 : 0;
-    $yetkili_islemleri = $purifier->purify(rescape($_POST['yetkili_islemleri'])) ? 1 : 0;
-    $qrcode = $purifier->purify(rescape($_POST['qrcode'])) ? 1 : 0;
-    $formlar = $purifier->purify(rescape($_POST['formlar'])) ? 1 : 0;
-    $popup_yonetim = $purifier->purify(rescape($_POST['popup_yonetim'])) ? 1 : 0;
 
-    $hata = [];
-    $qc = $dba->query("SELECT id FROM yetkili WHERE username='$username' ");
-    /*if ($dba->num_rows($qc) > 0) {
-        $rowc = $dba->fetch_assoc($qc);
-        $hata[] = "<p>Kullanıcı sistemde kayıtlı bulunmaktadır.</p>";
-        $hata[] = "<a href='index.php?tablo=yetkili&x=2&edit=".$rowc['id']."'></a>";
-    }*/
-    if (empty($adi)) $hata[] = "<p>Yetkili adı giriniz</p>";
-    if (empty($soyadi)) $hata[] = "<p>Yetkili soyadı giriniz</p>";
-    if (empty($mudurluk)) $hata[] = "<p>Çalıştığı müdürlük seçiniz</p>";
+    $adi = trim($_POST['adi']);
+    $soyadi = trim($_POST['soyadi']);
+    $username = trim($_POST['username']);
+    $mudurluk = $_POST['mudurluk'];
+    $perms = $_POST['perm'] ?? [];  // Yeni sistem için asıl izinler
 
-    if (!empty($hata)) alert_danger($hata);
+    $errors = [];
+    if (!$adi) $errors[] = "Ad giriniz";
+    if (!$soyadi) $errors[] = "Soyad giriniz";
+    if (!$mudurluk) $errors[] = "Müdürlük seçiniz";
+
+    if ($errors) {
+        alert_danger($errors);
+    }
     else {
-        $q = $dba->query("INSERT INTO yetkili (adi, soyadi, username, kayit_yetkili, yetkili_durumu, mudurluk, admin, sifre, yemekhane, etkinlik_duyuru, yetkili_islemleri, qrcode, formlar, popup_yonetim) VALUES ('$adi', '$soyadi', '$username','0', '1', '$mudurluk', '$admin', '$sifre', '$yemekhane', '$etkinlik_duyuru', '$yetkili_islemleri', '$qrcode', '$formlar', '$popup_yonetim') ");
-        if ($dba->affected_rows() > 0) {
-            alert_success("Yetkili başarıyla eklenmiştir.");
+        if (empty($username)) $username = slugify($adi . $soyadi);
+        $q = $dba->prepare("INSERT INTO yetkili (adi, soyadi, username, kayit_yetkili, yetkili_durumu, mudurluk) VALUES (?, ?, ?, '0', '1', ?)");
+        $q->bind_param("sssi", $adi, $soyadi, $username, $mudurluk);
+        $q->execute();
 
-            $dba->addLog($ip, $ldap_username, $personelTC, "create", "Yeni yetkili eklendi : ".$username);
+        $kullanici_id = $dba->insert_id();
+
+        // 2) yetkili_moduller tablosuna izinleri yaz
+        foreach ($perms as $yetki_key => $deger) {
+            $deger = ($deger == 1 ? 1 : 0);
+            $dba->query("INSERT INTO yetkili_moduller (kullanici_id, yetki_key, deger) VALUES ($kullanici_id, $yetki_key, $deger)");
         }
+        alert_success("Yetkili başarıyla eklendi.");
     }
 }
 ?>
@@ -119,30 +115,17 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
                             <h3 class="box-title" style="text-decoration: underline">Menü Yetkilerini Seçiniz</h3>
                         </div>
                         <div class="box-body">
-                            <div class="form-group">
-                                <label><input type="checkbox" id="adminCheck" name="admin" value="1"/> &nbsp;Admin </label>
-                            </div><hr style="margin: 5px">
-                            <div class="form-group">
-                                <label><input type="checkbox" class="perm-checkbox" name="sifre" value="1"/> &nbsp;LDAP Şifre Sıfırlama Yetkisi </label>
-                            </div>
-                            <div class="form-group">
-                                <label><input type="checkbox" class="perm-checkbox" name="yemekhane" value="1"/> &nbsp;Yemek Listesi Ekleme Yetkisi </label>
-                            </div>
-                            <div class="form-group">
-                                <label><input type="checkbox" class="perm-checkbox" name="etkinlik_duyuru" value="1"/> &nbsp;Etkinlik-Duyuru Ekleme-Silme Yetkisi </label>
-                            </div>
-                            <div class="form-group">
-                                <label><input type="checkbox" class="perm-checkbox" name="yetkili_islemleri" value="1"/> &nbsp;Yetkili İşlemleri Yetkisi </label>
-                            </div>
-                            <div class="form-group">
-                                <label><input type="checkbox" class="perm-checkbox" name="qrcode" value="1"/> &nbsp;QR Oluşturma Yetkisi </label>
-                            </div>
-                            <div class="form-group">
-                                <label><input type="checkbox" class="perm-checkbox" name="formlar" value="1"/> &nbsp;Form Ekleme Yetkisi </label>
-                            </div>
-                            <div class="form-group">
-                                <label><input type="checkbox" class="perm-checkbox" name="popup_yonetim" value="1"/> &nbsp;Popup Yönetim Yetkisi </label>
-                            </div>
+                            <?php
+                            $q = $dba->query("SELECT * FROM yetki_tanimlari ORDER BY id ASC");
+                            while ($r = $dba->fetch_assoc($q)) {
+                                ?>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" class="perm-checkbox" name="perm[<?= $r['id'] ?>]" value="1"/>
+                                        &nbsp;<?= htmlspecialchars($r['yetki_label']) ?>
+                                    </label>
+                                </div>
+                            <?php } ?>
                         </div>
                     </div>
                 </div>

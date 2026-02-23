@@ -2752,6 +2752,7 @@
 				{
 					sStdMenu += '<option value="'+aLengthMenu[0][i]+'">'+aLengthMenu[1][i]+'</option>';
 				}
+				sStdMenu += '<option value="-1">Tümü</option>';
 			}
 			else
 			{
@@ -2759,6 +2760,7 @@
 				{
 					sStdMenu += '<option value="'+aLengthMenu[i]+'">'+aLengthMenu[i]+'</option>';
 				}
+				sStdMenu += '<option value="-1">Tümü</option>';
 			}
 			sStdMenu += '</select>';
 			
@@ -9326,7 +9328,7 @@
 			 *      } );
 			 *    } );
 			 */
-			"sInfoFiltered": "(filtered from _MAX_ total entries)",
+			"sInfoFiltered": "(Toplam _MAX_ kişi içinden filtrelendi)",
 		
 		
 			/**
@@ -9524,7 +9526,7 @@
 			 *      } );
 			 *    } );
 			 */
-			"sZeroRecords": "No matching records found"
+			"sZeroRecords": "Eşleşen kayıt bulunamadı"
 		},
 	
 	

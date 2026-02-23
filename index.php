@@ -1,19 +1,6 @@
 <?php
 require_once("inc/header.php");
-require_once("inc/menu.php");
-
-function turkceGun($date) {
-    $days = [
-        'Monday'    => 'Pazartesi',
-        'Tuesday'   => 'Salı',
-        'Wednesday' => 'Çarşamba',
-        'Thursday'  => 'Perşembe',
-        'Friday'    => 'Cuma',
-        'Saturday'  => 'Cumartesi',
-        'Sunday'    => 'Pazar'
-    ];
-    return $days[date('l', strtotime($date))];
-}
+require_once("inc/menu1.php");
 
 if (empty($ldap_username) || empty($cn) || empty($personelTC) || $cn === 'Veri yok' || $personelTC === 'Veri yok') {
     echo "<div style='
@@ -27,21 +14,20 @@ if (empty($ldap_username) || empty($cn) || empty($personelTC) || $cn === 'Veri y
             text-align: center;
             padding: 10px 0;
             z-index: 9999;
-        '>⚠️ Kullanıcı bilgilerinizde eksiklik var. Lütfen bilgi işlem yazılım birimi(Dahili: 2932 - 2950) ile iletişime geçiniz.</div>";
+        '>⚠️ Kullanıcı bilgilerinizde eksiklik var. Lütfen bilgi işlem yazılım birimi(Dahili: 2950) ile iletişime geçiniz.</div>";
 }
 
 if (basename($_SERVER['PHP_SELF']) === 'index.php') {
     $now = date('Y-m-d H:i:s');
-    $sql = "SELECT * FROM popups 
-            WHERE aktif=1 
-            AND baslangic_tarihi <= '$now' 
-            AND bitis_tarihi >= '$now'
-            ORDER BY id ASC";
-    $result = $dba->query($sql);
-    $popups = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+
+    // Güvenli prepared statement
+    $stmt = $dba->prepare("SELECT * FROM popups 
+                           WHERE aktif = 1 AND baslangic_tarihi <= ? AND bitis_tarihi >= ?
+                           ORDER BY id ASC");
+    $stmt->execute([$now, $now]);
+    $popups = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
     if (!empty($popups)): ?>
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <style>
             #popupOverlay {
                 position: fixed; inset: 0;
@@ -62,9 +48,11 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                 animation: slideUp .4s ease;
                 font-family: "Segoe UI", sans-serif;
             }
-            #popupBox.bilgi { border-top: 6px solid #3498db; }
-            #popupBox.uyari { border-top: 6px solid #f1c40f; }
+
+            /* Kategori renkleri */
+            #popupBox.bilgi  { border-top: 6px solid #3498db; }
             #popupBox.duyuru { border-top: 6px solid #2ecc71; }
+            #popupBox.uyari  { border-top: 6px solid #f1c40f; }
             #popupBox.kritik { border-top: 6px solid #e74c3c; }
 
             #popupTitle {
@@ -73,22 +61,21 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                 display: flex; align-items: center; justify-content: center;
                 gap: 8px;
             }
-            #popupContent { font-size: 2rem; color: #333; margin-top: 10px; }
+            #popupContent { font-size: 1.2rem; color: #333; margin-top: 10px; }
             #popupClose {
                 margin-top: 20px;
                 background: #444; color: #fff;
                 border: none; padding: 8px 18px;
                 border-radius: 8px; cursor: pointer;
-                transition: 0.3s;
             }
             #popupClose:hover { background: #000; }
 
-            @keyframes fadeIn { from {opacity: 0;} to {opacity: 1;} }
-            @keyframes slideUp { from {transform: translateY(20px); opacity: 0;} to {transform: translateY(0); opacity: 1;} }
+            @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+            @keyframes slideUp { from {transform:translateY(20px);opacity:0;} to {transform:translateY(0);opacity:1;} }
         </style>
 
         <div id="popupOverlay" style="display:none;">
-            <div id="popupBox" class="">
+            <div id="popupBox">
                 <h3 id="popupTitle"></h3>
                 <div id="popupContent"></div>
                 <button id="popupClose">Kapat</button>
@@ -101,8 +88,8 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                 let index = 0;
 
                 function getCookie(name){
-                    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-                    return match ? match[2] : null;
+                    const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+                    return m ? m[2] : null;
                 }
                 function setCookie(name, value, days){
                     const d = new Date();
@@ -110,55 +97,68 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                     document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/;SameSite=Lax`;
                 }
 
-                function getIconForCategory(cat){
-                    switch(cat){
-                        case 'bilgi': return 'ℹ️';
-                        case 'uyari': return '⚠️';
-                        case 'duyuru': return '📢';
-                        case 'kritik': return '❗';
-                        default: return '💬';
-                    }
+                function icon(cat){
+                    return {
+                        bilgi: "ℹ️",
+                        duyuru: "📢",
+                        uyari: "⚠️",
+                        kritik: "❗"
+                    }[cat] || "💬";
                 }
 
-                function showNextPopup() {
-                    if (index >= popups.length) return;
-                    const popup = popups[index];
-                    const cookieName = 'popup_' + popup.id + '_seen';
+                function showNext(){
+                    if(index >= popups.length) return;
 
-                    if (getCookie(cookieName)) {
-                        index++;
-                        showNextPopup();
+                    const p = popups[index];
+                    const cname = "popup_" + p.id + "_seen";
+
+                    if(getCookie(cname)){
+                        index++; showNext();
                         return;
                     }
 
-                    const kategori = popup.kategori || 'bilgi';
-                    const ikon = getIconForCategory(kategori);
-                    $('#popupTitle').html(ikon + ' ' + popup.baslik);
-                    $('#popupContent').html(popup.icerik);
-                    $('#popupBox').attr('class', kategori);
-                    $('#popupOverlay').fadeIn(200);
+                    $("#popupTitle").html(icon(p.kategori) + " " + p.baslik);
+
+                    // --- RESİM + İÇERİK ENTEGRASYONU ---
+                    let html = p.icerik;
+
+                    if (p.image_url && p.image_url !== "") {
+                        html = `
+                                <div style="margin-bottom:15px;">
+                                    <img src="${p.image_url}"
+                                         style="max-width:80%; border-radius:10px;
+                                         box-shadow:0 4px 15px rgba(0,0,0,0.3);" />
+                                </div>
+                                <div>${p.icerik}</div>
+                            `;
+                    }
+
+                    $("#popupContent").html(html);
+
+                    $("#popupBox").attr("class", p.kategori);
+                    $("#popupOverlay").fadeIn(200);
 
                     const scrollY = window.scrollY;
-                    document.body.style.position = 'fixed';
+                    document.body.style.position = "fixed";
                     document.body.style.top = `-${scrollY}px`;
-                    document.body.style.width = '100%';
 
-                    $('#popupClose').off('click').on('click', function(){
-                        $('#popupOverlay').fadeOut(200, () => {
-                            setCookie(cookieName, '1', 7); // 7 gün boyunca tekrar gösterme
-                            document.body.style.position = '';
-                            document.body.style.top = '';
-                            document.body.style.width = '';
+                    $("#popupClose").off().on("click", function(){
+                        $("#popupOverlay").fadeOut(200, () => {
+                            setCookie(cname, "1", 7);
+                            document.body.style.position = "";
+                            document.body.style.top = "";
                             window.scrollTo(0, scrollY);
                             index++;
-                            showNextPopup();
+                            showNext();
                         });
                     });
                 }
 
-                showNextPopup();
+
+                showNext();
             });
         </script>
+
     <?php
     endif;
 }
@@ -174,7 +174,6 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
             <!-- Döviz Satırı -->
             <div>
                 <?php
-                // 5 dakika kontrolü
                 $kontrol = $dba->query("SELECT * FROM piyasalar ORDER BY id DESC LIMIT 1");
                 $cache = $kontrol->fetch_assoc();
 
@@ -203,8 +202,22 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
 
                     // CoinGecko (BTC) verisini cURL ile çek
                     $coingecko_url = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=try';
-                    $btc_response = fetch_url_with_curl($coingecko_url);
-                    $btc_data = json_decode($btc_response, true);
+                    $ch = curl_init();
+                    curl_setopt_array($ch, [
+                            CURLOPT_URL => $coingecko_url,
+                            CURLOPT_RETURNTRANSFER => true,
+                            CURLOPT_SSL_VERIFYPEER => true,
+                            CURLOPT_HTTPHEADER => [
+                                    'User-Agent: MyAppName/1.0 (contact: admin@siteadi.com)'
+                            ],
+                            CURLOPT_TIMEOUT => 10,
+                    ]);
+
+                    $response = curl_exec($ch);
+
+                    curl_close($ch);
+
+                    $btc_data = json_decode($response, true);
 
                     $btc_fiyat = isset($btc_data['bitcoin']['try'])
                         ? number_format($btc_data['bitcoin']['try'], 0, ',', '.')
@@ -238,10 +251,10 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                 <div class="row">
                     <?php
                     $boxes = [
-                        ['value'=>$dolar_satis, 'label'=>'DOLAR', 'color'=>'#454444'],
-                        ['value'=>$euro_satis, 'label'=>'EURO', 'color'=>'#454444'],
-                        ['value'=>$gram_altin_satis, 'label'=>'ALTIN', 'color'=>'#454444'],
-                        ['value'=>$btc_fiyat, 'label'=>'BTC', 'color'=>'#454444'],
+                        ['value'=>$dolar_satis, 'label'=>'DOLAR', 'color'=>'radial-gradient(circle at center, #007d32 0%, #00352b 100%)'],
+                        ['value'=>$euro_satis, 'label'=>'EURO', 'color'=>'radial-gradient(circle at center, #007d32 0%, #00352b 100%)'],
+                        ['value'=>$gram_altin_satis, 'label'=>'ALTIN', 'color'=>'radial-gradient(circle at center, #007d32 0%, #00352b 100%)'],
+                        ['value'=>$btc_fiyat, 'label'=>'BTC', 'color'=>'radial-gradient(circle at center, #007d32 0%, #00352b 100%)'],
                         /*['value'=>'', 'label'=>'HAVA DURUMU', 'color'=>'#3d9970', 'weather'=>true]*/
                     ];
                     foreach($boxes as $box):
@@ -305,7 +318,7 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                                     "Content-Type: application/json",
                                     "x-api-key: $apiKey"
                                 ]);
-                                curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+                                curl_setopt($ch, CURLOPT_TIMEOUT, 5);
                                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
                                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
 
@@ -323,14 +336,9 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                                         $dba->query("TRUNCATE TABLE news");
 
                                         // Yeni kayıtları ekle
-                                        $stmt = $dba->prepare("INSERT INTO news (title, image_url, published_at) VALUES (?,?,?)");
+                                        $stmt = $dba->prepare("INSERT IGNORE INTO news (haber_id, title, image_url, published_at) VALUES (?,?,?,?)");
                                         foreach ($haberler as $h) {
-                                            $stmt->bind_param(
-                                                "sss",
-                                                $h['title'],
-                                                $h['image'],
-                                                $h['published_at']
-                                            );
+                                            $stmt->bind_param("isss", $h['id'], $h['title'], $h['image'], $h['published_at']);
                                             $stmt->execute();
                                         }
                                         $stmt->close();
@@ -516,178 +524,86 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                 </section>
                 <section class="col-lg-5 connectedSortable ui-sortable" style="padding-left: 4px">
                     <!--Etkinlik ve Duyurular-->
-                    <?php if ($ldap_username=="harunseki" OR $ldap_username=="oktayrifatsen") { ?>
-                        <!--<div class="panel panel-success" style="margin-bottom: 8px; border: 0;">
-                            <?php
-/*                            $sonuclar = $dba->query("SELECT * FROM files ORDER BY id DESC LIMIT 3");
-                            */?>
-                            <div class="panel-heading" style="text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;padding: 5px 5px 5px 10px !important; color: #ffffff; background-color: #454444; border-color: #454444; height: 40px">
-                                <h4 class="panel-title" style="display:inline-block; margin:0;">
-                                    <i class="fa fa-bullhorn"></i> Etkinlik ve Duyurular
-                                </h4>
-                                <?php /*if ($_SESSION['etkinlik_duyuru']==1 OR $_SESSION['admin']==1) { */?>
-                                    <div style="display: flex; gap:5px;">
-                                        <a href="etkinlik_duyuru.php" class="btn bg-olive" style="color:white; font-size:10px; /*border-color: white*/">
-                                            <i class="fa fa-download"></i> Yeni Etkinlik Ekle
-                                        </a>
-                                    </div>
-                                <?php /*} */?>
-                            </div>
-                            <div class="panel-body" style="padding: 9px">
-                                <div class="row">
-                                    <?php
-/*                                    while($row = $sonuclar->fetch_assoc()):
-                                        $ext = strtolower(pathinfo($row['file'], PATHINFO_EXTENSION));
-                                        if(!in_array($ext, ['jpg','jpeg','png','gif'])) continue;
-                                        $dosya = "img/files/" . $row['file'];
-                                        $id = "modal_" . $row['id'];
-                                        */?>
-                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                            <div class="thumbnail position-relative" style="height:200px; overflow:hidden; cursor:pointer;" data-toggle="modal" data-target="#<?php /*= $id */?>">
-                                                <img src="<?php /*= $dosya */?>" alt="<?php /*= htmlspecialchars($row['adi']) */?>" style="width:auto; height:100%; object-fit:cover; border-radius: 5px">
+                    <div class="panel panel-success" style="margin-bottom: 8px; border: 0;">
+                        <?php
 
-                                                <div class="overlay text-center" style="position:absolute; top:50%; left:50%;
-                                transform:translate(-50%, -50%); background:rgba(0,0,0,0.5); color:#fff;
-                                font-weight:bold; font-size:16px; padding:5px 10px; border-radius:3px;
-                                opacity:0; transition:opacity 0.3s; white-space:nowrap;">
-                                                    Resmi Büyüt
-                                                </div>
+                        /*if ($admin == '1') {
+                            echo isset($_SESSION['active_permissions'])
+                                ? count($_SESSION['active_permissions'])
+                                : 0;
+                        }*/
+                        $etkinlikler = [];
 
-                                                <div class="caption" style="
-                                                                    width:83%;
-                                                                    position:absolute;
-                                                                    bottom:5px;
-                                                                    left:50%;
-                                                                    transform:translateX(-50%);
-                                                                    background:rgba(255,255,255,0.8);
-                                                                    font-size:12px;
-                                                                    font-weight:600;
-                                                                    padding:3px 8px;
-                                                                    border-radius:3px;
-                                                                    box-sizing:border-box;
-                                                                    text-align:center;
-                                                                    max-width:90%;
-                                                                    word-wrap: break-word;
-                                                                    white-space: normal;
-                                                                    overflow:hidden;
-                                                                ">
-                                                    <?php /*= htmlspecialchars($row['adi']) */?>
-                                                </div>
-                                            </div>
-                                        </div>
+                        // 1 saat kontrolü (id=1 üzerinden bakıyoruz)
+                        $check = $dba->query("SELECT created_at FROM etkinlik_ve_duyuru WHERE id=1")->fetch_assoc();
+                        $lastFetch = $check['created_at'] ?? null;
+                        $needsUpdate = false;
 
-                                        <div class="modal fade" id="<?php /*= $id */?>" tabindex="-1" role="dialog" aria-hidden="true">
-                                            <div class="modal-dialog modal-lg">
-                                                <div class="modal-content">
-                                                    <div class="modal-header text-right">
-                                                        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">Kapat</button>
-                                                    </div>
-                                                    <div class="modal-body text-center" style="padding:10px;">
-                                                        <img src="<?php /*= $dosya */?>" alt="<?php /*= htmlspecialchars($row['adi']) */?>"
-                                                             style="max-width:100%; max-height:80vh; object-fit:contain; border-radius: 5px">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <?php /*endwhile; */?>
-                                </div>
-                            </div>
-                            <script>
-                                $(document).ready(function(){
-                                    $('.thumbnail').hover(function(){
-                                        $(this).find('.overlay').css('opacity', '1');
-                                    }, function(){
-                                        $(this).find('.overlay').css('opacity', '0');
-                                    });
-                                });
-                            </script>
-                        </div>-->
-                    <?php }
-                    else { ?>
-                    <?php } ?>
-                    <?php
-                    $etkinlikler = [];
-
-                    // 1 saat kontrolü (id=1 üzerinden bakıyoruz)
-                    $check = $dba->query("SELECT created_at FROM etkinlik_ve_duyuru WHERE id=1")->fetch_assoc();
-                    $lastFetch = $check['created_at'] ?? null;
-                    $needsUpdate = false;
-
-                    if ($lastFetch) {
-                        $diff = time() - strtotime($lastFetch);
-                        if ($diff > 7200) { // 2 saatten küçükse API çağrısı yapma
+                        if ($lastFetch) {
+                            $diff = time() - strtotime($lastFetch);
+                            if ($diff > 7200) { // 2 saatten küçükse API çağrısı yapma
+                                $needsUpdate = true;
+                            }
+                        } else {
+                            // tablo boşsa ilk kez doldur
                             $needsUpdate = true;
                         }
-                    } else {
-                        // tablo boşsa ilk kez doldur
-                        $needsUpdate = true;
-                    }
 
-                    if ($needsUpdate) {
-                        $apiUrl = "https://www.cankaya.bel.tr/api/v1/sliders/active"; // ✅ Yeni servis URL
-                        $apiKey = "ck_et9nT91y4g1TImI40UDmsvxZFQMMiyosgFgxrmda";
-                        try {
-                            $ch = curl_init();
-                            curl_setopt($ch, CURLOPT_URL, $apiUrl);
-                            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                                "Content-Type: application/json",
-                                "x-api-key: $apiKey"
-                            ]);
-                            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-                            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-                            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                        if ($needsUpdate) {
+                            $apiUrl = "https://www.cankaya.bel.tr/api/v1/sliders/active"; // ✅ Yeni servis URL
+                            $apiKey = "ck_et9nT91y4g1TImI40UDmsvxZFQMMiyosgFgxrmda";
+                            try {
+                                $ch = curl_init();
+                                curl_setopt($ch, CURLOPT_URL, $apiUrl);
+                                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                                    "Content-Type: application/json",
+                                    "x-api-key: $apiKey"
+                                ]);
+                                curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+                                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+                                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
 
-                            $response = curl_exec($ch);
-                            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                            curl_close($ch);
+                                $response = curl_exec($ch);
+                                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                                curl_close($ch);
 
-                            if ($response && $httpCode === 200) {
-                                $result = json_decode($response, true);
+                                if ($response && $httpCode === 200) {
+                                    $result = json_decode($response, true);
 
-                                if (!empty($result['data']['data']) && is_array($result['data']['data'])) {
-                                    $etkinlikler = $result['data']['data'];
+                                    if (!empty($result['data']['data']) && is_array($result['data']['data'])) {
+                                        $etkinlikler = $result['data']['data'];
 
-                                    // Eski kayıtları sil
-                                    $dba->query("TRUNCATE TABLE etkinlik_ve_duyuru");
+                                        // Eski kayıtları sil
+                                        $dba->query("TRUNCATE TABLE etkinlik_ve_duyuru");
 
-                                    // Yeni kayıtları ekle
-                                    $stmt = $dba->prepare("INSERT INTO etkinlik_ve_duyuru (title, direct_link, image_url, publish_at) VALUES (?, ?, ?, ?)");
-                                    foreach ($etkinlikler as $e) {
-                                        $title = $e['title'] ?? '';
-                                        $link = $e['direct_link'] ?? '#';
-                                        $image = $e['image']['url'] ?? '';
-                                        $publish_at = date("Y-m-d H:i:s", strtotime($e['created_at']));
-
-                                        $stmt->bind_param("ssss", $title, $link, $image, $publish_at);
-                                        $stmt->execute();
-
-                                        if ($ldap_username == "harunseki") {
-                                            echo $stmt->error;
+                                        // Yeni kayıtları ekle
+                                        $stmt = $dba->prepare("INSERT IGNORE INTO etkinlik_ve_duyuru (etk_id, title, direct_link, image_url, publish_at) VALUES (?, ?, ?, ?, ?)");
+                                        foreach ($etkinlikler as $e) {
+                                            $stmt->bind_param("issss", $e['id'], $e['title'], $e['direct_link'], $e['image']['url'], date("Y-m-d H:i:s", strtotime($e['created_at'])));
+                                            $stmt->execute();
                                         }
+                                        $stmt->close();
                                     }
-                                    $stmt->close();
                                 }
+                            } catch (\Exception $e) {
+                                // hata durumunda mevcut kayıtlar kullanılacak
                             }
-                        } catch (\Exception $e) {
-                            // hata durumunda mevcut kayıtlar kullanılacak
                         }
-                    }
-                    // DB’den oku
-                    $res = $dba->query("SELECT * FROM etkinlik_ve_duyuru ORDER BY publish_at DESC LIMIT 2");
-                    $etkinlikler = [];
-                    while ($row = $res->fetch_assoc()) {
-                        $etkinlikler[] = $row;
-                    }
-                    ?>
-                    <div class="panel panel-success" style="margin-bottom: 8px; border: 0;">
+                        // DB’den oku
+                        $res = $dba->query("SELECT * FROM etkinlik_ve_duyuru ORDER BY publish_at DESC LIMIT 2");
+                        $etkinlikler = [];
+                        while ($row = $res->fetch_assoc()) {
+                            $etkinlikler[] = $row;
+                        }
+                        ?>
                         <div class="panel-heading" style="text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;padding: 5px 5px 5px 10px !important; color: #ffffff; background-color: #454444; border-color: #454444; height: 40px">
                             <h4 class="panel-title" style="display:inline-block; margin:0;">
                                 <i class="fa fa-bullhorn"></i> Etkinlik ve Duyurular
                             </h4>
 
                             <div style="display: flex; gap:5px;">
-                                <a href="etkinlik_duyuru.php?x=3" class="btn bg-olive" style="color:white; font-size:10px;">
+                                <a href="etkinlik-duyuru" class="btn bg-olive" style="color:white; font-size:10px;">
                                     <i class="fa fa-plus"></i> Tümünü Gör
                                 </a>
                             </div>
@@ -712,7 +628,7 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                                 transform:translate(-50%, -50%); background:rgba(0,0,0,0.5); color:#fff;
                                 font-weight:bold; font-size:16px; padding:5px 10px; border-radius:3px;
                                 opacity:0; transition:opacity 0.3s; white-space:nowrap;">
-                                                Etkinliği Gör
+                                                Detay...
                                             </div>
 
                                             <div class="caption" style="
@@ -751,7 +667,7 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                                                     <div style="margin-top:10px; font-weight:bold;">
                                                         <h4 style="font-weight:bold;"><?=$title?></h4>
                                                         <a href="<?= $etkinlik['direct_link'] ?>" target="_blank" class="btn btn-success btn-sm" style="margin-top:10px;">
-                                                            <i class="fa fa-external-link"></i> Detay Git
+                                                            <i class="fa fa-external-link"></i> Detaya Git
                                                         </a>
                                                     </div>
                                                 </div>
@@ -788,11 +704,11 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                             </h4>
                             <div style="display: flex; gap:5px;">
                                 <?php if ($_SESSION['yemekhane']==1 OR $_SESSION['admin']==1) { ?>
-                                    <a href="yemek.php" class="btn bg-olive" style="color:white; font-size:10px; /*border-color: white*/">
+                                    <a href="6-yemekhane" class="btn bg-olive" style="color:white; font-size:10px; /*border-color: white*/">
                                         <i class="fa fa-download"></i> &nbsp;Yemek Listesi Ekle
                                     </a>
                                 <?php } ?>
-                                <a href="yemek.php?x=2" class="btn bg-olive" style="color:white; font-size:10px;">
+                                <a href="yemek-listesi" class="btn bg-olive" style="color:white; font-size:10px;">
                                     <i class="fa fa-plus"></i> &nbsp;Haftalık Liste
                                 </a>
                             </div>
@@ -914,18 +830,15 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
 
                             $start = $dateList[0];
                             $end = end($dateList);
-
-                            // API'ye 5 günlük sorgu gönder (cURL ile)
-                            $ch = curl_init();
-
-
-                            /*if ($ldap_username=="tanerdari") {
-                                $ldap_username="tanerdari";
+                            /*if ($admin==1) {
+                                echo "$apiUrl?Start=$start&End=$end&access_token=$accessToken&IncludeNonworkerPersonels=true&personelTckimlikno=$personelTC";
                             }*/
 
+                            $ch = curl_init();
                             curl_setopt($ch, CURLOPT_URL, "$apiUrl?Start=$start&End=$end&access_token=$accessToken&IncludeNonworkerPersonels=true&personelTckimlikno=$personelTC");
                             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+                            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
                             $response = curl_exec($ch);
 
                             /*if (curl_errno($ch)) {
@@ -933,38 +846,37 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                             }*/
                             curl_close($ch);
 
-                            $data = json_decode($response, true);
+                            if ($response !== false) {
+                                $data = json_decode($response, true);
+                                if (!empty($data) && is_array($data)) {
+                                    // 6️⃣ DB'deki tüm eski veriyi sil
+                                    $dba->query("DELETE FROM pdks_logs WHERE ldap_username='$ldap_username'");
 
+                                    // 7️⃣ Yeni veriyi toplu olarak DB'ye ekle
+                                    $insertedDates = []; // aynı gün 2 kez insert olmasını engelle
 
-                            // 5️⃣ API'den gelen veri boş değilse ve 5 günlük veri doluysa
-                            if (!empty($data) && is_array($data)) {
-                                // 6️⃣ DB'deki tüm eski veriyi sil
-                                $dba->query("DELETE FROM pdks_logs WHERE ldap_username='$ldap_username'");
+                                    foreach ($data as $entry) {
+                                        $dateKey = substr($entry['date'], 0, 10);
+                                        $enterTime = !empty($entry['enterDate']) ? (new DateTime($entry['enterDate']))->format('H:i:s') : null;
+                                        $exitTime = !empty($entry['exitDate']) ? (new DateTime($entry['exitDate']))->format('H:i:s') : null;
 
-                                // 7️⃣ Yeni veriyi toplu olarak DB'ye ekle
-                                $insertedDates = []; // aynı gün 2 kez insert olmasını engelle
+                                        // Eğer bu tarih zaten eklendiyse atla
+                                        if (in_array($dateKey, $insertedDates)) {
+                                            continue;
+                                        }
 
-                                foreach ($data as $entry) {
-                                    $dateKey   = substr($entry['date'], 0, 10);
-                                    $enterTime = !empty($entry['enterDate']) ? (new DateTime($entry['enterDate']))->format('H:i:s') : null;
-                                    $exitTime  = !empty($entry['exitDate'])  ? (new DateTime($entry['exitDate']))->format('H:i:s') : null;
+                                        // Eğer giriş ve çıkış saatleri tamamen boşsa atla
+                                        if (empty($enterTime) && empty($exitTime)) {
+                                            continue;
+                                        }
 
-                                    // Eğer bu tarih zaten eklendiyse atla
-                                    if (in_array($dateKey, $insertedDates)) {
-                                        continue;
+                                        $stmt = $dba->prepare("INSERT INTO pdks_logs (ldap_username, personelSicilNo, date, enterTime, exitTime) VALUES (?,?,?,?,?)");
+                                        $stmt->bind_param("sisss", $ldap_username, $personelTC, $dateKey, $enterTime, $exitTime);
+                                        $stmt->execute();
+                                        $stmt->close();
+
+                                        $insertedDates[] = $dateKey;
                                     }
-
-                                    // Eğer giriş ve çıkış saatleri tamamen boşsa atla
-                                    if (empty($enterTime) && empty($exitTime)) {
-                                        continue;
-                                    }
-
-                                    $stmt = $dba->prepare("INSERT INTO pdks_logs (ldap_username, personelSicilNo, date, enterTime, exitTime) VALUES (?,?,?,?,?)");
-                                    $stmt->bind_param("sisss", $ldap_username, $personelTC, $dateKey, $enterTime, $exitTime);
-                                    $stmt->execute();
-                                    $stmt->close();
-
-                                    $insertedDates[] = $dateKey;
                                 }
                             }
                         }
@@ -997,7 +909,7 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                                         <i class="fa fa-trash"></i> &nbsp;BUGÜNÜ SİL
                                     </button>
                                 <?php } ?>
-                                <a href="giris_cikis.php" class="btn bg-olive" style="color:white; font-size:10px;">
+                                <a href="<?=$_SESSION['ldap_username']?>-giris-cikis" class="btn bg-olive" style="color:white; font-size:10px;">
                                     <i class="fa fa-plus"></i> &nbsp;DAHA FAZLA
                                 </a>
                             </div>
@@ -1021,11 +933,17 @@ if (basename($_SERVER['PHP_SELF']) === 'index.php') {
                                                 $entry = $existingData[$date];
                                                 $enterTime = !empty($entry['enterTime']) ? (new DateTime($entry['enterTime']))->modify('+3 hours')->format('H:i:s') : "-";
                                                 $exitTime  = !empty($entry['exitTime'])  ? (new DateTime($entry['exitTime']))->modify('+3 hours')->format('H:i:s') : "-";
+
+                                                /*if ($enterTime !== "-" && $exitTime !== "-") {
+                                                    // Giriş saati, çıkış saatinden büyükse yer değiştir
+                                                    if (strtotime($enterTime) > strtotime($exitTime)) {
+                                                        [$enterTime, $exitTime] = [$exitTime, $enterTime];
+                                                    }
+                                                }*/
                                             } else {
                                                 $enterTime = "-";
                                                 $exitTime = "-";
                                             }
-
                                             // Hafta sonu kontrolü
                                             $dayOfWeek = date('N', strtotime($date));
                                             $rowClass = ($dayOfWeek >= 6) ? 'style="background-color: #efefef;"' : '';

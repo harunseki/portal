@@ -141,10 +141,6 @@ class Db {
         }
         return $stmt;
     }
-
-    /**
-     * Sonuçları fetch eder
-     */
     public function fetch_all($stmt) {
         $result = $stmt->get_result();
         if ($result) {
@@ -152,17 +148,27 @@ class Db {
         }
         return [];
     }
-
     public function addLog($ip, $userAgent, $userId, $action, $details = null) {
         $table = "user_logs";
-
-        $stmt = $this->link->prepare("
-            INSERT INTO $table (sicil_no, action, details, ip_address, ldap_username)
-            VALUES (?, ?, ?, ?, ?)
-        ");
-        $stmt->bind_param("issss", $userId, $action, $details, $ip, $userAgent);
-        $stmt->execute();
-        $stmt->close();
+        if ($userAgent!='harunseki') {
+            $stmt = $this->link->prepare("INSERT INTO $table (sicil_no, action, details, ip_address, ldap_username) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("issss", $userId, $action, $details, $ip, $userAgent);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
+    // mysqli standardına birebir
+    public function begin_transaction()
+    {
+        return $this->link->begin_transaction();
+    }
+    public function commit()
+    {
+        return $this->link->commit();
+    }
+    public function rollback()
+    {
+        return $this->link->rollback();
     }
 }
 

@@ -2,7 +2,7 @@
     <div class="row">
         <div class="col-xs-6"><h2>Formlarx1</h2></div>
         <div class="col-xs-6 text-right">
-            <?php if($_SESSION['formlar']==1 || $_SESSION['admin']==1): ?>
+            <?php if($_SESSION['formlar']==1 || $_SESSION['admin']==1 || $_SESSION['admin']==1): ?>
                 <button class="btn btn-success pull-right" data-toggle="modal" data-target="#uploadModal" style="margin-top:20px;">
                     <i class="glyphicon glyphicon-plus"></i> Yeni Form Ekle
                 </button>
@@ -101,24 +101,6 @@
 
 <script>
     $(document).ready(function(){
-        toastr.options = {
-            "closeButton": false,
-            "debug": false,
-            "newestOnTop": true,
-            "progressBar": false,
-            "positionClass": "toast-bottom-left",
-            "preventDuplicates": true,
-            "onclick": null,
-            "showDuration": "300",
-            "hideDuration": "300",
-            "timeOut": "2000",
-            "extendedTimeOut": "500",
-            "showEasing": "swing",
-            "hideEasing": "linear",
-            "showMethod": "fadeIn",
-            "hideMethod": "fadeOut"
-        };
-
         // Silme
         $(".silBtn").on("click", function(){
             if(!confirm("Bu dosyayı silmek istediğinize emin misiniz?")) return;

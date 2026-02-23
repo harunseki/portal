@@ -1,3 +1,0 @@
-"id"	"yetkili_durumu"
-"1"	"Aktif"
-"2"	"Pasif"

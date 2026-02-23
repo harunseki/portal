@@ -1,26 +1,56 @@
 <?php
-require_once '../class/mysql.php'; // veritabanı bağlantın
+require_once '../class/mysql.php';
 header('Content-Type: application/json');
 
-$id = (int)($_POST['id'] ?? 0);
-$field = $_POST['field'] ?? '';
-$ip = $_POST['ip'] ?? '';
+// POST verileri
+$user_id       = (int)($_POST['id'] ?? 0);            // yetkili.id
+$yetki_id      = (int)($_POST['yetki_id'] ?? 0);      // yetki_tanimlari.id
+$ip            = $_POST['ip'] ?? '';
 $ldap_username = $_POST['ldap_username'] ?? '';
-$personelTC = $_POST['personelTC'] ?? '';
+$personelTC    = $_POST['personelTC'] ?? '';
 
-$izinli = ['admin','sifre','yemekhane','etkinlik_duyuru','yetkili_islemleri','qrcode','formlar','popup_yonetim'];
-if (!$id || !in_array($field, $izinli)) {
+if (!$user_id || !$yetki_id) {
     echo json_encode(['success' => false, 'message' => 'Geçersiz parametre']);
     exit;
 }
 
-$q = $dba->query("SELECT `$field`, username FROM yetkili WHERE id=$id");
-$row = $dba->fetch_assoc($q);
-$mevcut = (int)$row[$field];
-$yeni = $mevcut ? 0 : 1;
+/* YETKİ VAR MI KONTROL ET */
+$sql = $dba->prepare("SELECT id FROM yetkili_moduller WHERE kullanici_id = ? AND yetki_key = ?");
+$sql->bind_param("ii", $user_id, $yetki_id);
+$sql->execute();
+$res = $sql->get_result();
+$kayit_var = $res->num_rows > 0;
 
-$dba->query("UPDATE yetkili SET `$field`=$yeni WHERE id=$id");
+/* KULLANICININ ADINI LOG İÇİN AL */
+$u = $dba->query("SELECT username FROM yetkili WHERE id = $user_id");
+$urow = $dba->fetch_assoc($u);
+$username = $urow['username'] ?? '';
 
-$dba->addLog($ip, $ldap_username, $personelTC, "update", "Yetkili bilgileri güncellendi : ".$row['username']);
+/* YETKİYİ AÇ / KAPAT */
+if ($kayit_var) {
+    // YETKİ KAPATILIYOR → kaydı sil
+    $dba->query("DELETE FROM yetkili_moduller WHERE kullanici_id = $user_id AND yetki_key = $yetki_id");
 
-echo json_encode(['success' => true, 'yeni_durum' => $yeni]);
+    $dba->addLog(
+        $ip,
+        $ldap_username,
+        $personelTC,
+        "update",
+        "Yetki kapatıldı (user: $username, yetki_id: $yetki_id)"
+    );
+
+    echo json_encode(['success' => true, 'yeni_durum' => 0]);
+} else {
+    // YETKİ AÇILIYOR → kayıt ekle
+    $dba->query("INSERT INTO yetkili_moduller (kullanici_id, yetki_key, deger) VALUES ($user_id, $yetki_id, 1)");
+
+    $dba->addLog(
+        $ip,
+        $ldap_username,
+        $personelTC,
+        "update",
+        "Yetki aktif edildi (user: $username, yetki_id: $yetki_id)"
+    );
+
+    echo json_encode(['success' => true, 'yeni_durum' => 1]);
+}

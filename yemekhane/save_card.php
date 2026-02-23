@@ -60,7 +60,7 @@ if ($existingPerson && $existingPerson->num_rows > 0) {
                 updateTarihi = NOW()
             WHERE id = $id";
     if ($dba->query($sql)) {
-        echo json_encode(['status' => 'merged', 'message' => 'Kullanıcı bulundu, kart bilgisi eklendi.']);
+        echo json_encode(['status' => 'updated', 'message' => 'Kullanıcı kart bilgisi güncellendi.']);
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Kart eşleştirilirken hata oluştu.']);
     }

@@ -1,9 +1,7 @@
 <?php
-require_once("class/mysql.php");
-
 // Departman listesini çek
 $departments = [];
-$q = $dba->query("SELECT id, name, price FROM carddepartment ORDER BY name ASC");
+$q = $dba->query("SELECT id, name, price FROM carddepartment WHERE durum=1 ORDER BY name ASC");
 while ($row = $dba->fetch_assoc($q)) {
         $departments[] = $row;
 }
@@ -42,10 +40,7 @@ while ($row = $dba->fetch_assoc($q)) {
 <section class="content-header">
     <h2><i class="fa fa-id-card"></i> Kart Kullanıcı İşlemleri</h2>
 </section>
-
 <section class="content">
-
-    <!-- Kart Okutma Alanı -->
     <div class="box box-success" style="margin-top:20px;">
         <div class="box-header"><h3 class="box-title"><i class="fa fa-credit-card"></i> Kart Okut</h3></div>
         <div class="box-body">
@@ -54,16 +49,18 @@ while ($row = $dba->fetch_assoc($q)) {
             <div class="status-bar" id="statusBar"></div>
         </div>
     </div>
-
     <div class="row">
-        <!-- Sol sütun: Kullanıcı Bilgileri -->
         <div class="col-md-6 fade-in" id="kullanici_bilgileri" style="display:none;">
             <div class="box box-success">
                 <div class="box-header"><h3 class="box-title"><i class="fa fa-user"></i> Kullanıcı Bilgileri</h3></div>
                 <div class="box-body">
                     <form id="cardForm">
-                        <input type="hidden" name="cardNumber" id="cardNumber">
-
+                        <div class="form-group">
+                            <label>Kart No</label>
+                            <input type="text" name="cardNumber" id="cardNumber" class="form-control" readonly>
+                        </div>
+                        <div class="form-group" id="newCardBar">
+                        </div>
                         <div class="form-group">
                             <label>TCKN</label>
                             <input type="text" name="TCKN" id="TCKN" class="form-control" required>
@@ -96,8 +93,6 @@ while ($row = $dba->fetch_assoc($q)) {
                 </div>
             </div>
         </div>
-
-        <!-- Sağ sütun: Yemek Hakkı -->
         <div class="col-md-6 fade-in" id="yemek_hakki_tanimlama" style="display:none;">
             <div class="box box-success">
                 <div class="box-header"><h3 class="box-title"><i class="fa fa-utensils" ></i> Yemek Hakkı Tanımlama</h3></div>
@@ -141,8 +136,126 @@ while ($row = $dba->fetch_assoc($q)) {
         </div>
     </div>
 </section>
-
 <script>
+    let cardNumber = '';
+    function todayInfo() {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+
+    function isWeekend(date) {
+        const d = date.getDay();
+        return d === 0 || d === 6; // Pazar / Cumartesi
+    }
+
+    function nextMonday(date) {
+        const d = new Date(date);
+        while (d.getDay() === 0 || d.getDay() === 6) {
+            d.setDate(d.getDate() + 1);
+        }
+        return d;
+    }
+
+    function isSameDate(a, b) {
+        return a.getTime() === b.getTime();
+    }
+
+    function toSqlDate(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    function calculateDatesByPackage(days) {
+        const today = todayInfo();
+        const day   = today.getDate();
+        const month = today.getMonth();
+        const year  = today.getFullYear();
+
+        let start = null;
+        let end   = null;
+
+        /* 1 GÜNLÜK */
+        if (days === 1) {
+            start = today;
+            end   = today;
+        }
+
+        /* 15 GÜNLÜK */
+        if (days === 15) {
+
+            const first     = new Date(year, month, 1);
+            const fifteenth = new Date(year, month, 14);
+
+            const validDays = [
+                isWeekend(first)     ? nextMonday(first)     : first,
+                isWeekend(fifteenth) ? nextMonday(fifteenth) : fifteenth
+            ];
+
+            const isValid = validDays.some(d => isSameDate(d, today));
+
+            /*if (!isValid) {
+                toastr.warning(
+                    '15 günlük paket ayın 1’i veya 15’i (hafta sonuysa ilk iş günü) alınabilir'
+                );
+                return null;
+            }*/
+
+            if (day <= 15) {
+                start = new Date(year, month, 1);
+                end   = new Date(year, month, 14);
+            } else {
+                start = new Date(year, month, 15);
+                end   = new Date(year, month + 1, 0); // ay sonu
+            }
+        }
+
+        /* 30 GÜNLÜK */
+        if (days === 30) {
+
+            /*if (day < 15 || day > 20) {
+                toastr.warning(
+                    '30 günlük paket sadece ayın 15–20 tarihleri arasında alınabilir'
+                );
+                return null;
+            }*/
+
+            start = new Date(year, month, 15);
+            end   = new Date(year, month + 1, 14);
+        }
+
+        return { start, end };
+    }
+
+    // Tabloyu güncelleyen fonksiyon
+    function loadMealHistory(cardUserId){
+        fetch('yemekhane/get_meal_history.php', {
+            method: 'POST',
+            headers: {'Content-Type':'application/x-www-form-urlencoded'},
+            body: 'cardUserId=' + encodeURIComponent(cardUserId)
+        })
+            .then(r => r.json())
+            .then(hist => {
+                const tbody = document.querySelector('#mealHistory tbody');
+                tbody.innerHTML = '';
+                if (hist.status === 'success' && hist.data.length > 0) {
+                    hist.data.forEach((row, i) => {
+                        const isLast = i === 0 ? ' style="background:#dff0d8;font-weight:bold;"' : '';
+                        tbody.insertAdjacentHTML('beforeend', `
+                        <tr${isLast}>
+                            <td>${row.id}</td>
+                            <td>${row.startDate}</td>
+                            <td>${row.finishDate}</td>
+                        </tr>
+                    `);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Kayıt bulunamadı</td></tr>';
+                }
+            });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         const cardInput = document.getElementById('cardInput');
         const cardStatus = document.getElementById('cardStatus');
@@ -165,15 +278,13 @@ while ($row = $dba->fetch_assoc($q)) {
             inputTimer = setTimeout(() => {
                 this.value = '';
             }, 700);
-            const cardNumber = this.value.trim();
-
+            cardNumber = this.value.trim();
             // 5 karakterden az ise alt divleri gizle ve fetch yapma
             if(cardNumber.length < 7){
                 userDiv.style.display = 'none';
                 mealDiv.style.display = 'none';
                 return;
             }
-
             // 5 karakter ve üzeri ise alt divleri göster
             userDiv.style.display = 'block';
             mealDiv.style.display = 'block';
@@ -188,6 +299,7 @@ while ($row = $dba->fetch_assoc($q)) {
                 })
                     .then(r => r.json())
                     .then(data => {
+                        $('#newCardBar').html('');
                         if(data.status === 'found'){
                             const d = data.data;
                             fields.forEach(f=>{
@@ -199,7 +311,7 @@ while ($row = $dba->fetch_assoc($q)) {
                             document.getElementById('cardUserTCKN').value = d.TCKN;
                             cardStatus.innerHTML = '<div class="alert alert-success">Kayıt bulundu.</div>';
 
-                            loadMealHistory(d.id);
+                            loadMealHistory(d.TCKN);
 
                         } else {
                             cardStatus.innerHTML = '<div class="alert alert-warning">Yeni kart kaydı oluşturabilirsiniz.</div>';
@@ -229,131 +341,173 @@ while ($row = $dba->fetch_assoc($q)) {
             })
                 .then(r=>r.json())
                 .then(data=>{
-                    if(data.status==='success'||data.status==='updated'){
-                        cardStatus.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-                    } else {
-                        cardStatus.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                    if(data.status==='success') {
+                        toastr.success(data.message);
+                        $('#cardInput').val('');
+                        cardStatus.innerHTML = '';
+                        $('#newCardBar').html('');
+                        cardInput.focus();
+                    }
+                    else if(data.status==='updated') {
+                        toastr.warning(data.message);
+                        $('#cardInput').val('');
+                        cardStatus.innerHTML = '';
+                        $('#newCardBar').html('');
+                        cardInput.focus();
+                    }
+                    else {
+                        toastr.danger(data.message);
+                        $('#cardInput').val('');
+                        cardStatus.innerHTML = '';
+                        $('#newCardBar').html('');
+                        cardInput.focus();
                     }
                     cardInput.focus();
                 });
         });
 
         // Yemek hakkı ekle
-        document.getElementById('mealAllowanceForm').addEventListener('submit', e=>{
+        document.getElementById('mealAllowanceForm').addEventListener('submit', e => {
             e.preventDefault();
-            const formData = new FormData(e.target);
-            fetch('yemekhane/save_meal_allowance.php',{
-                method:'POST',
-                body: new URLSearchParams(formData)
+
+            const selectedDays = parseInt($('#mealDays').val(), 10);
+            if (!selectedDays) {
+                toastr.warning('Paket seçiniz');
+                return;
+            }
+
+            const dates = calculateDatesByPackage(selectedDays);
+            if (!dates) return;
+
+            const payload = {
+                tckn: $('#cardUserTCKN').val(),
+                cardNumber: $('#cardNumber').val(),
+                package: selectedDays,
+                startDate: toSqlDate(dates.start),
+                finishDate: toSqlDate(dates.end),
+                source: 'admin'
+            };
+
+            /* 1️⃣ ÇAKIŞMA KONTROLÜ */
+            fetch('yemekhane/check_card_conflict.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(payload)
             })
-                .then(r=>r.json())
-                .then(data=>{
-                    const statusDiv = document.getElementById('mealAllowanceStatus');
-                    if(data.status==='success'){
-                        statusDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                .then(r => r.json())
+                .then(res => {
 
-                        // tabloyu yenile
-                        const cardUserId = document.getElementById('cardUserId').value;
-                        loadMealHistory(cardUserId);
-
-                    } else {
-                        statusDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                    if (res.status === 'conflict') {
+                        toastr.warning(res.message);
+                        return; // ⛔ burada duruyoruz
                     }
+
+                    if (res.status !== 'ok') {
+                        toastr.error(res.message || 'Kontrol sırasında hata oluştu');
+                        return;
+                    }
+
+                    /* 2️⃣ GERÇEK KAYIT */
+                    return fetch('yemekhane/save_meal_allowement.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams(payload)
+                    });
+
+                })
+                .then(r => r && r.json())
+                .then(resp => {
+                    if (!resp) return;
+
+                    if (resp.status === 'success') {
+                        toastr.success(resp.message);
+                        loadMealHistory(payload.tckn);
+                    } else {
+                        toastr.error(resp.message);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    toastr.error('İşlem sırasında hata oluştu');
                 });
         });
 
-        // Tabloyu güncelleyen fonksiyon
-        function loadMealHistory(cardUserId){
-            fetch('yemekhane/get_meal_history.php', {
-                method: 'POST',
-                headers: {'Content-Type':'application/x-www-form-urlencoded'},
-                body: 'cardUserId=' + encodeURIComponent(cardUserId)
-            })
-                .then(r => r.json())
-                .then(hist => {
-                    const tbody = document.querySelector('#mealHistory tbody');
-                    tbody.innerHTML = '';
-                    if (hist.status === 'success' && hist.data.length > 0) {
-                        hist.data.forEach((row, i) => {
-                            const isLast = i === 0 ? ' style="background:#dff0d8;font-weight:bold;"' : '';
-                            tbody.insertAdjacentHTML('beforeend', `
-                        <tr${isLast}>
-                            <td>${row.id}</td>
-                            <td>${row.startDate}</td>
-                            <td>${row.finishDate}</td>
-                        </tr>
-                    `);
-                        });
-                    } else {
-                        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Kayıt bulunamadı</td></tr>';
-                    }
-                });
-        }
-
         // TCKN alanına girişte otomatik doldurma
-        $('#TCKN').on('input', function() {
-            const tckn = $(this).val().trim();
-            const cardNumber = $('#cardNumber').val().trim();
-            const mealDays = $('#mealDays').val();
+        $('#TCKN').on('input', function () {
+            const tckn       = $(this).val().trim();
+            const typedCard  = $('#cardInput').val().trim(); // kullanıcının girdiği kart
+            const mealDays   = $('#mealDays').val();
 
             if (tckn.length === 11) {
                 fetch('yemekhane/get_personel_by_tckn.php', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: 'tckn=' + encodeURIComponent(tckn) + '&cardNumber=' + encodeURIComponent(cardNumber)
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'tckn=' + encodeURIComponent(tckn)
                 })
                     .then(res => res.json())
                     .then(data => {
+
                         if (data.status === 'ok' || data.status === 'found_local') {
+                            /* PERSONEL BİLGİLERİ */
                             $('#adi').val(data.adi);
                             $('#soyadi').val(data.soyadi);
                             $('#sicilNo').val(data.sicilNo);
                             $('#cardDepartment').val(data.cardDepartment);
 
+                            /* KART NUMARASI */
                             if (data.cardNumber) {
-                                $('#cardNumber').val(data.cardNumber);
-                                $('#cardInput').val(data.cardNumber);
+                                /*$('#cardNumber').val(data.cardNumber);*/
+                                $('#cardInput').val(cardNumber);
+
                                 userDiv.style.display = 'block';
                                 mealDiv.style.display = 'block';
+
+                                // 🔍 KART KARŞILAŞTIRMA (DOĞRU YER)
+                                if (cardNumber && cardNumber !== data.cardNumber) {
+                                    $('#newCardBar').html(`
+                                                            <div class="alert alert-warning">
+                                                                Kullanıcıya ait yeni kart bilgisi tanımlamaktasınız.
+                                                            </div>
+                                                        `);
+                                } else {
+                                    $('#newCardBar').html('');
+                                }
                             }
 
-                            $('#cardUserId').val(data.cardUserId || data.newUserId || '');
+                            /* USER ID */
+                            const uid = data.cardUserId || data.newUserId || '';
+                            $('#cardUserId').val(uid);
                             $('#cardUserTCKN').val(tckn);
 
+                            /* DURUM MESAJI */
                             const msg = data.status === 'found_local'
-                                ? 'Kullanıcı sistemde kayıtlı, bilgiler getirildi.'
+                                ? (cardNumber !== data.cardNumber) ? 'Yeni kart ataması yapmaktasınız' : 'Kullanıcı sistemde kayıtlı, bilgiler getirildi.'
                                 : 'Servisten bilgiler getirildi.';
+                            /*const msg = data.status === 'found_local'
+                                ? 'Kullanıcı sistemde kayıtlı, bilgiler getirildi.'
+                                : 'Servisten bilgiler getirildi.';*/
+
                             $('#cardStatus').html(`<div class="alert alert-success">${msg}</div>`);
 
-                            if (data.cardUserId || data.newUserId) loadMealHistory(data.cardUserId || data.newUserId);
+                            /* YEMEK GEÇMİŞİ */
+                            if (uid) loadMealHistory(tckn);
 
-                            if (mealDays && (data.newUserId || data.cardUserId)) {
-                                const uid = data.newUserId || data.cardUserId;
-                                const formData = new URLSearchParams({
-                                    cardUserId: uid,
-                                    cardUserTCKN: tckn,
-                                    mealDays: mealDays
-                                });
-                                fetch('yemekhane/save_meal_allowance.php', {
-                                    method: 'POST',
-                                    body: formData
-                                })
-                                    .then(r => r.json())
-                                    .then(resp => {
-                                        $('#mealAllowanceStatus').html(`<div class="alert alert-${resp.status === 'success' ? 'success' : 'danger'}">${resp.message}</div>`);
-                                        if (resp.status === 'success') loadMealHistory(uid);
-                                    });
-                            }
                         } else {
-                            $('#cardStatus').html(`<div class="alert alert-warning">${data.message}</div>`);
+                            $('#cardStatus').html(`
+                    <div class="alert alert-warning">${data.message}</div>
+                `);
                         }
+
                     })
                     .catch(err => {
                         console.error(err);
-                        $('#cardStatus').html('<div class="alert alert-danger">Servis bağlantı hatası.</div>');
+                        $('#cardStatus').html(`
+                <div class="alert alert-danger">Servis bağlantı hatası.</div>
+            `);
                     });
             }
         });
+
 
         // MealDays seçimi değiştiğinde periodType göster/gizle
         $('#mealDays').on('change', function() {
@@ -363,6 +517,5 @@ while ($row = $dba->fetch_assoc($q)) {
                 $('#periodTypeDiv').hide();
             }
         });
-
     });
 </script>

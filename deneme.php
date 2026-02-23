@@ -12,7 +12,7 @@ $headers = [
     "Content-Type: application/json",
 ];
 
-$postData = "datasetName=PRONETA_PERSONEL_YAZILIM&parameters={TCKIMLIKNO:'',DURUMU:'',USERNAME:'',ALTTURU:''}";
+$postData = "datasetName=PRONETA_PERSONEL_YAZILIM&parameters={TCKIMLIKNO:'',DURUMU:'',USERNAME:'',ALTTURU:'',MUDURLUK:'',STATU_TURU:''}";
 
 // Eğer servis form-data bekliyorsa (dosyanın raw alanında sanki form parametre gibi yazılmış)
 # $postData = http_build_query($data);
@@ -32,7 +32,8 @@ $skipped = 0;
 $notFound = 0;
 if (curl_errno($ch)) {
     echo "Hata: " . curl_error($ch);
-} else {
+}
+else {
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     "HTTP Kod: $httpCode\n";
 

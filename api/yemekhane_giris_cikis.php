@@ -90,8 +90,7 @@ function verigetir_stream($username, $password, $ad_soyad, $tarih_baslangic, $ta
                     carddevice.`name` AS yemekhane_adi
                 FROM cardmovement
                 INNER JOIN cardmealallowement ON cardmovement.meal = cardmealallowement.id
-                INNER JOIN carduser ON cardmealallowement.employee = carduser.id 
-                                     AND cardmovement.employee = carduser.id
+                INNER JOIN carduser ON cardmealallowement.employee = carduser.id AND cardmovement.employee = carduser.id
                 INNER JOIN carddevice ON cardmovement.device = carddevice.id
                 WHERE cardmovement.id != '' $where_sql
                 ORDER BY cardmovement.id
