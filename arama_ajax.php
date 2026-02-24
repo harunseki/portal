@@ -22,5 +22,4 @@ $attrs  = ["cn","mail","distinguishedName"];
 $search = ldap_search($conn, $base_dn, $filter, $attrs);
 $entries = ldap_get_entries($conn, $search);
 
-
 echo json_encode($entries);
