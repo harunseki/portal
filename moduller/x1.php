@@ -3,10 +3,44 @@ $YENI_GUN = 7;
 $now = new DateTime();
 $kategoriler = [];
 
-$sql = "SELECT k.id AS kategori_id, k.kod, k.baslik, k.renk, k.collapse, m.id AS mod_id, m.isim AS mod_isim, m.label, m.ikon, m.hedef_url, m.yetki, m.kayit_tarihi, m.modul_tipi, m.hedef_url, m.parametreler FROM mod_kategori k
-        LEFT JOIN mod_moduller m ON m.kategori_id = k.id
-        WHERE m.aktif=1
-        ORDER BY k.baslik, m.isim";
+$sql = "SELECT 
+    k.id AS kategori_id,
+    k.kod,
+    k.baslik,
+    k.renk,
+    k.collapse,
+
+    m.id AS mod_id,
+    m.isim AS mod_isim,
+    m.label,
+    m.ikon,
+    m.hedef_url,
+    m.yetki,
+    m.kayit_tarihi,
+    m.modul_tipi,
+    m.parametreler,
+
+    COALESCE(uc.user_count, 0) AS user_count
+
+FROM mod_kategori k
+
+LEFT JOIN mod_moduller m 
+    ON m.kategori_id = k.id
+
+LEFT JOIN (
+    SELECT 
+        yetki_key,
+        COUNT(*) AS user_count
+    FROM yetkili_moduller
+    WHERE deger = 1
+    GROUP BY yetki_key
+) uc 
+    ON uc.yetki_key = m.id
+
+WHERE m.aktif = 1
+
+ORDER BY k.baslik, m.isim
+";
 $result = $dba->query($sql);
 
 while ($row = $result->fetch_assoc()) {
@@ -36,7 +70,8 @@ while ($row = $result->fetch_assoc()) {
                 "hedef_url"   => $row['hedef_url'],
                 "yetki"       => $row['yetki'],
                 "badge"       => $badge,
-                "modul_tipi"  => $row['modul_tipi']
+                "modul_tipi"  => $row['modul_tipi'],
+                "user_count"  => $row['user_count']
         ];
     }
 }
@@ -92,6 +127,20 @@ while ($row = $result->fetch_assoc()) {
     .kategori-baslik.collapsed .toggle-icon {
         transform: rotate(-90deg);
     }
+    .modul-meta {
+        font-size: 16px;
+        margin-top: 6px;
+        display: flex;
+        justify-content: space-between;
+        color: #666;
+    }
+    .modul-detay {
+        cursor: pointer;
+    }
+
+    .modul-detay:hover {
+        color: #000;
+    }
 </style>
 <section class="content-header clearfix">
     <div class="pull-left">
@@ -141,6 +190,13 @@ while ($row = $result->fetch_assoc()) {
                     <div class="modul-kutu" onclick="window.location='<?= $link ?>'" style="min-height:120px; border-top:4px solid <?= $kat['renk'] ?>">
                         <i class="fa <?= $m['ikon'] ?> icon"></i>
                         <h4 style="margin-bottom:0"><?= $m['isim'] ?></h4>
+                        <?php if ($_SESSION['admin'] == 1): ?>
+                        <div class="modul-meta">
+                            <span class="modul-detay" onclick="event.stopPropagation(); openModulDetay(<?= $m['id'] ?>)">
+                                <i class="fa fa-users"></i> <?= $m['user_count'] ?>
+                            </span>
+                        </div>
+                        <?php endif; ?>
                         <?php if (!empty($m['badge'])): ?>
                             <span class="badge-custom" style="background: <?= $kat['renk'] ?>"> YENİ </span>
                         <?php endif; ?>
@@ -150,3 +206,25 @@ while ($row = $result->fetch_assoc()) {
         </div>
     <?php endforeach; ?>
 </section>
+<div class="modal fade" id="modulDetayModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Modül Kullanıcıları</h4>
+            </div>
+            <div class="modal-body" id="modulDetayBody">
+                Yükleniyor...
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function openModulDetay(modulId) {
+        $('#modulDetayModal').modal('show');
+        $('#modulDetayBody').html('Yükleniyor...');
+
+        $.get('moduller/modul_kullanicilar.php', { id: modulId }, function(data) {
+            $('#modulDetayBody').html(data);
+        });
+    }
+</script>
