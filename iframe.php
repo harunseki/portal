@@ -69,7 +69,7 @@ $origin = $parsed['scheme'] . '://' . $parsed['host']
         </div>
     </section>
     <section class="content" style="padding: 0;">
-        <iframe id="child" src="<?= htmlspecialchars($iframe_url) ?>" style="<?= $iframe_style ?>" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads">
+        <iframe id="child" src="<?= htmlspecialchars($iframe_url) ?>" style="<?= $iframe_style ?>" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads allow-modals">
         </iframe>
     </section>
 </aside>
