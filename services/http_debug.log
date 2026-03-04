@@ -1,0 +1,27 @@
+[2026-02-27 09:14:04] URL: https://pdks.cankaya.bel.tr/api/pdksModule/PdksActivity/GetPdksPersonelFirstEnterLastExitLog
+BODY: {}
+HTTP_CODE: 401
+RESPONSE: 
+
+[2026-02-27 09:15:49] URL: https://pdks.cankaya.bel.tr/api/pdksModule/PdksActivity/GetPdksPersonelFirstEnterLastExitLog
+HTTP_CODE: 401
+RESPONSE: 
+
+[2026-02-27 09:15:50] URL: https://yazilim.ankara.bel.tr/api/EgoOgrenci/sorgula
+BODY: {"tckn":"12345678901"}
+HTTP_CODE: 200
+RESPONSE: {"sonuc":"H","ogrenimTipi":"-","aktifOgrenimler":[]}
+
+[2026-02-27 09:15:51] URL: https://cnkerp.cankaya.bel.tr/PersonelYillikIzin/IzinleriveRaporlarıGetir
+HTTP_CODE: 200
+RESPONSE: []
+
+[2026-02-27 09:15:51] URL: https://ybscanli.cankaya.bel.tr/FlexCityUi/rest/json/sis/RestDataset/
+HTTP_CODE: 200
+RESPONSE: {"success":false,"resultCode":"0900","resultMessage":"datasetName"}
+
+[2026-02-27 09:15:52] URL: https://pdks.cankaya.bel.tr/api/pdksModule/PdksActivity/GetPdksPersonelFirstEnterLastExitLog?access_token=5c84a43b-0afc-49b5-91fd-e647df2b87f8
+BODY: {}
+HTTP_CODE: 500
+RESPONSE: {"type":"https://httpstatuses.io/500","title":"Internal Server Error","status":500,"traceId":"00-496062a3f7814a5f2766fbb7e6e5da04-b11f41d12d0e38ce-01"}
+
