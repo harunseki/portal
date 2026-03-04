@@ -1,45 +1,4 @@
 ﻿<?php
-if (empty($_SESSION['yetkili_islemleri']) AND empty($_SESSION['admin']) AND empty($admin)) {
-    // Yetkisiz erişim
-    http_response_code(403); // 403 Forbidden
-    ?>
-    <style>
-        .error-box {
-            background: #fff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            text-align: center;
-        }
-        .error-box h1 {
-            font-size: 48px;
-            margin-bottom: 10px;
-            color: #e74c3c;
-        }
-        .error-box p {
-            font-size: 18px;
-            margin-bottom: 20px;
-        }
-        .error-box a {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: rgba(6, 90, 40);
-            color: #fff;
-            text-decoration: none;
-            border-radius: 5px;
-        }
-        .error-box a:hover {
-            background-color: rgba(6, 90, 40);;
-        }
-    </style>
-    <div class="error-box">
-        <h1>403</h1>
-        <p>Bu sayfaya erişim yetkiniz yok.</p>
-        <a href="index.php">Ana Sayfaya Dön</a>
-    </div>
-    <?php
-    exit();
-}
 if ($_SERVER['REQUEST_METHOD'] == "POST") {
 
     $adi = trim($_POST['adi']);
@@ -81,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
                     <h3 class="box-title">YETKİLİ EKLE</h3>
                 </div>
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <div class="box-body">
                             <div id="statusab">
                                 <div class="form-group">
@@ -108,24 +67,6 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
                                     <?php } ?>
                                 </select>
                             </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="box-header">
-                            <h3 class="box-title" style="text-decoration: underline">Menü Yetkilerini Seçiniz</h3>
-                        </div>
-                        <div class="box-body">
-                            <?php
-                            $q = $dba->query("SELECT * FROM yetki_tanimlari ORDER BY id ASC");
-                            while ($r = $dba->fetch_assoc($q)) {
-                                ?>
-                                <div class="form-group">
-                                    <label>
-                                        <input type="checkbox" class="perm-checkbox" name="perm[<?= $r['id'] ?>]" value="1"/>
-                                        &nbsp;<?= htmlspecialchars($r['yetki_label']) ?>
-                                    </label>
-                                </div>
-                            <?php } ?>
                         </div>
                     </div>
                 </div>

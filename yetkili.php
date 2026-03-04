@@ -2,7 +2,15 @@
 $file="yetkili";
 require_once("inc/header.php");
 require_once("inc/menu1.php");
-require_once "inc/kontrol.php";
+
+// GET parametresi al
+$x = isset($_GET['x']) ? (int) $_GET['x'] : 1;
+
+$allowed = [3, 4];
+
+if (!in_array($x, $allowed, true) && $admin !== 1) {
+    require_once "inc/kontrol.php";
+}
 ?>
 <aside class="right-side">
     <section class="content-header">

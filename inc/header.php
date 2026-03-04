@@ -395,7 +395,7 @@ $display3 = "";
                                 </li>
                                 <li class="user-footer">
                                     <div class="pull-left">
-                                        <a href="<?= $ldap_username ?>-3-yetkili" class="btn btn-default btn-flat">Bilgilerim</a>
+                                        <a href="<?= $ldap_username ?>-4-yetkili" class="btn btn-default btn-flat">Bilgilerim</a>
                                     </div>
                                     <div class="pull-right">
                                         <a href="#" onclick="logoutAndClose()" class="btn btn-default btn-flat">Çıkış</a>
