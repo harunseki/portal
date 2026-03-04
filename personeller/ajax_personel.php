@@ -2,12 +2,20 @@
 ini_set('memory_limit','-1');
 set_time_limit(0);
 
-$serverName = "10.1.1.245";
+$serverName = "10.1.1.240";
 $database = "proneta";
 $username = "dbm";
 $password = "1234qwER!";
 
 $tc = $_POST['tc'] ?? '';
+
+//Tarih kısıtı konulmak istenirse
+//AND (
+//            CASE WHEN DATEADD(HOUR,3,l.TransmissionDateTime)<'2025-07-29'
+//                 THEN DATEADD(HOUR,3,l.DateTime)
+//                 ELSE DATEADD(HOUR,3,l.TransmissionDateTime)
+//            END
+//          ) <= '2025-12-31 23:59:59'
 
 try {
     $pdo = new PDO("sqlsrv:Server=$serverName;Database=$database;Encrypt=no", $username, $password);

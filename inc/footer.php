@@ -44,38 +44,73 @@
 <script src="assets/js/AdminLTE/app.js" type="text/javascript"></script>
 <!-- page script -->
 <script type="text/javascript">
-    $(function() {
-        // Plugin API değil, yeni DataTables API'si:
-        $('#example1').DataTable({
+    $(function () {
+        $('.datatable').DataTable({
             paging: true,
             lengthChange: false,
             searching: false,
             ordering: true,
             info: true,
             autoWidth: false,
-            responsive: true  // okların responsive kapsayıcıda bozulmasını da önler
+            responsive: true,
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/tr.json" // Türkçe dil desteği
+            }
         });
+    });
+    document.querySelectorAll('.export-btn').forEach(function(button){
+        button.addEventListener('click', function(){
 
-        $('#example2').DataTable({
-            paging: true,
-            lengthChange: false,
-            searching: false,
-            ordering: true,
-            info: true,
-            autoWidth: false,
-            responsive: true
+            var tableId = this.dataset.table;
+            var tableEl = $('#' + tableId);
+
+            if (!tableEl.length) {
+                console.warn("Table bulunamadı:", tableId);
+                return;
+            }
+
+            // Eski 1.9.4 API instance
+            var oSettings = tableEl.dataTable().fnSettings();
+            if (!oSettings) {
+                console.warn("DataTable initialize edilmemiş:", tableId);
+                return;
+            }
+
+            // Başlıkları al
+            var headers = [];
+            $(oSettings.nTHead).find('th').each(function(){
+                headers.push($(this).text().trim());
+            });
+
+            // Satır verilerini al (sadece visible)
+            var rows = [];
+            for(var i=0; i<oSettings.aiDisplay.length; i++){
+                var idx = oSettings.aiDisplay[i];
+                var rowData = [];
+                for(var j=0; j<oSettings.aoColumns.length; j++){
+                    var cellData = oSettings.aoData[idx]._aData[j];
+                    // CSV Injection koruması
+                    if (/^[=+\-@]/.test(cellData)) cellData = "'" + cellData;
+                    cellData = (cellData + '').replace(/"/g,'""');
+                    rowData.push('"' + cellData + '"');
+                }
+                rows.push(rowData.join(","));
+            }
+
+            // CSV birleştir
+            var csv = [headers.map(function(h){ return '"' + h + '"'; }).join(",")].concat(rows).join("\n");
+
+            // UTF-8 BOM ile blob oluştur
+            var blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.download = tableId + "_export.csv";
+            a.href = url;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         });
-
-        $('#pdksTable').DataTable({
-            paging: true,
-            lengthChange: false,
-            searching: false,
-            ordering: true,
-            info: true,
-            autoWidth: false,
-            responsive: true
-        });
-
     });
 </script>
 <script type="text/javascript">

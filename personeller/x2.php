@@ -186,10 +186,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             <h3 class="box-title">
                                 <?= htmlspecialchars($selectedMudAdi) ?> - Personel Verileri (<?= count($uniqueRows) ?> Kayıt)
                             </h3>
-                            <button id="exportExcel" class="btn btn-success pull-right" style="margin: 10px 10px 0">Excel Olarak İndir</button>
+                            <button data-table="pdksTable2" class="btn btn-success pull-right export-btn" style="margin: 10px 10px 0">
+                                <i class="fa fa-file-excel-o"></i>Excel Olarak İndir
+                            </button>
                         </div>
                         <div class="box-body table-responsive">
-                            <table id="pdksTable" class="table table-bordered table-striped">
+                            <table id="pdksTable2" class="table table-bordered table-striped datatable">
                                 <thead>
                                 <tr>
                                     <th>#</th>
@@ -220,7 +222,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </section>
 <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
-
 <script>
     var mudurlukSelect = new TomSelect("#mudurluk", {
         plugins: ['remove_button', 'checkbox_options'],
@@ -255,6 +256,5 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             })
             .catch(err => console.error("HATA:", err));
     });
-
 </script>
 

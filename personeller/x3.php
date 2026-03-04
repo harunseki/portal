@@ -224,10 +224,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($start)) {
             <div class="box">
                 <div class="box-header">
                     <h3 class="box-title"><strong>Müdürlük Toplam Özet</strong></h3>
-                    <button id="exportExcel2" class="btn btn-success pull-right">Excel Olarak İndir</button>
+                    <button class="btn btn-success pull-right export-btn" data-table="example1">
+                        <i class="fa fa-file-excel-o"></i>Excel Olarak İndir
+                    </button>
                 </div>
                 <div class="box-body table-responsive">
-                    <table id="example2" class="table table-bordered table-striped">
+                    <table id="example1" class="table table-bordered table-striped datatable">
                         <thead><tr><th>Müdürlük</th><th>Personel Sayısı</th><th>Σ Yıllık</th><th>Σ Rapor</th><th>Σ Diğer</th><th>Genel Σ</th></tr></thead>
                         <tbody>
                         <?php foreach ($stats as $mud => $p):
@@ -254,10 +256,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($start)) {
             <div class="box">
                 <div class="box-header">
                     <h3 class="box-title"><strong>Personel Bazlı İçerik Özet</strong></h3>
-                    <button id="exportExcel1" class="btn btn-success pull-right">Excel Olarak İndir</button>
+                    <button class="btn btn-success pull-right export-btn" data-table="example2">
+                        <i class="fa fa-file-excel-o"></i>Excel Olarak İndir
+                    </button>
                 </div>
                 <div class="box-body table-success">
-                    <table id="example1" class="table table-bordered table-striped">
+                    <table id="example2" class="table table-bordered table-striped">
                         <thead>
                         <tr>
                             <th>Müdürlük</th>
@@ -290,33 +294,5 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($start)) {
                 </div>
             </div>
         <?php endif; ?>
-        <script>
-            document.getElementById('exportExcel2')?.addEventListener('click', function() {
-                let table = document.getElementById('example2');
-                if (!table) return;
-                let rows = Array.from(table.querySelectorAll('tr'));
-                let csv = rows.map(r => Array.from(r.querySelectorAll('th,td')).map(cell => `"${cell.innerText.replace(/"/g, '""')}"`).join(",")).join("\n");
-                let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-                let url = URL.createObjectURL(blob);
-                let a = document.createElement('a');
-                a.href = url;
-                a.download = 'mudurluk_ozet.csv';
-                a.click();
-                URL.revokeObjectURL(url);
-            });
-            document.getElementById('exportExcel1')?.addEventListener('click', function() {
-                let table = document.getElementById('example1');
-                if (!table) return;
-                let rows = Array.from(table.querySelectorAll('tr'));
-                let csv = rows.map(r => Array.from(r.querySelectorAll('th,td')).map(cell => `"${cell.innerText.replace(/"/g, '""')}"`).join(",")).join("\n");
-                let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-                let url = URL.createObjectURL(blob);
-                let a = document.createElement('a');
-                a.href = url;
-                a.download = 'mudurluk_ozet.csv';
-                a.click();
-                URL.revokeObjectURL(url);
-            });
-        </script>
     </div>
 </section>

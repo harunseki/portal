@@ -10,7 +10,6 @@ $tc = $_POST['tc'] ?? '';
 
 <section class="content">
     <div class="box-body">
-
         <!-- Arama Formu -->
         <div class="row" style="margin-top:10px;">
             <div class="col-md-12">
@@ -39,12 +38,12 @@ $tc = $_POST['tc'] ?? '';
                 <div class="box box-success" style="margin-top:10px;">
                     <div class="box-header with-border">
                         <h3 id="tableTitle" class="box-title"></h3>
-                        <button id="exportExcelPDKS" class="btn btn-success pull-right" style="display: none; margin-top: 5px; margin-right: 15px;">
+                        <button data-table="pdksTable4" class="btn btn-success pull-right export-btn" style="display: none; margin-top: 5px; margin-right: 15px;">
                             <i class="fa fa-file-excel-o"></i> Excel İndir
                         </button>
                     </div>
                     <div class="box-body">
-                    <table id="pdksTable" class="table table-bordered table-striped">
+                    <table id="pdksTable4" class="table table-bordered table-striped">
                         <thead>
                         <tr>
                             <th>#</th>
@@ -64,20 +63,8 @@ $tc = $_POST['tc'] ?? '';
     </div>
 </section>
 <script>
-    var table;
-
     $(document).ready(function() {
-        table = $('#pdksTable1').DataTable({
-            "paging": true,
-            "lengthChange": true,
-            "searching": true,
-            "ordering": true,
-            "info": true,
-            "autoWidth": false,
-            "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/tr.json" // Türkçe dil desteği
-            }
-        });
+
         // Form submit
         $('#formPersonel').on('submit', function(e){
             e.preventDefault();
@@ -94,34 +81,38 @@ $tc = $_POST['tc'] ?? '';
                 dataType: 'json',
                 success: function(data){
 
-                    // jQuery objesini alıyoruz (lowercase 'd')
-                    var dt = $('#pdksTable').dataTable();
+                    var tableEl = $('#pdksTable4');
 
-                    // 1. Tabloyu Temizle (fnClearTable - Legacy Method)
-                    dt.fnClearTable();
+                    // DataTable legacy 1.9.4 settings
+                    var oSettings = tableEl.dataTable().fnSettings();
+                    if (!oSettings) {
+                        console.warn("DataTable initialize edilmemiş:", 'pdksTable4');
+                        btn.prop('disabled', false).text(originalText);
+                        return;
+                    }
 
+                    // Tabloyu temizle
+                    tableEl.dataTable().fnClearTable();
+
+                    // Export butonu görünürlüğü
                     if (data.length > 0) {
-                        $('#exportExcelPDKS').show(); // Veri varsa göster
+                        $('.export-btn[data-table="pdksTable4"]').show();
                     } else {
-                        $('#exportExcelPDKS').hide(); // Veri yoksa gizle
-                        alert("Kayıt bulunamadı."); // Bilgilendirme
+                        $('.export-btn[data-table="pdksTable4"]').hide();
+                        alert("Kayıt bulunamadı.");
                     }
 
                     // Başlığı güncelle
                     $('#tableTitle').text((tc || 'Tüm Personel') + " – Log Kayıtları (" + data.length + " kayıt)");
 
                     if (data.length > 0) {
-                        // Veriyi hazırla (rows.add formatı yerine fnAddData formatı)
+                        // Satırları ekle
                         var rows = data.map(function(row, i) {
                             var tarihStr = '-';
-
-                            // Tarih kontrolü
                             if (row.Tarih) {
-                                // Tarih nesne gelirse stringe çeviriyoruz
                                 tarihStr = (typeof row.Tarih === 'object' && row.Tarih.date) ? row.Tarih.date : row.Tarih;
                             }
 
-                            // fnAddData, ham dizi (array of arrays) bekler
                             return [
                                 i + 1,
                                 row.Tckimlikno || '-',
@@ -132,15 +123,14 @@ $tc = $_POST['tc'] ?? '';
                             ];
                         });
 
-                        // 2. Satırları Ekle (fnAddData - Legacy Method)
-                        dt.fnAddData(rows);
+                        tableEl.dataTable().fnAddData(rows);
                     }
 
-                    // 3. Tabloyu Çiz (fnDraw - Legacy Method)
-                    dt.fnDraw();
+                    tableEl.dataTable().fnDraw();
 
+                    // Scroll
                     $('html, body').animate({
-                        scrollTop: $('#tableTitle').offset().top - 50 // Başlığın 50 piksel üstüne kaydır
+                        scrollTop: $('#tableTitle').offset().top - 50
                     }, 500);
 
                     btn.prop('disabled', false).text(originalText);
@@ -152,28 +142,6 @@ $tc = $_POST['tc'] ?? '';
                 }
             });
         });
-        document.getElementById('exportExcelPDKS')?.addEventListener('click', function() {
-            let table = document.getElementById('pdksTable');
-            if (!table) return;
 
-            // DataTables'dan çekilen tüm satırları al
-            let rows = Array.from(table.querySelectorAll('tr'));
-
-            // CSV formatına çevir (Başlıklar ve Satırlar)
-            let csv = rows.map(r =>
-                Array.from(r.querySelectorAll('th,td'))
-                    .map(cell => `"${cell.innerText.replace(/"/g, '""')}"`)
-                    .join(",")
-            ).join("\n");
-
-            // Dosya oluşturma ve indirme
-            let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-            let url = URL.createObjectURL(blob);
-            let a = document.createElement('a');
-            a.href = url;
-            a.download = 'pdks_loglari.csv'; // Dosya Adı
-            a.click();
-            URL.revokeObjectURL(url);
-        });
     });
 </script>

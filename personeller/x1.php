@@ -207,10 +207,12 @@ $start=global_date_to_tr($_POST["start"]);
                     <div class="box box-success">
                         <div class="box-header" style="margin-top: 5px">
                             <h3 class="box-title"><?= $start . " tarihinden itibaren - " ?> İzin ve Rapor Verileri (<?= count($dataRows) ?> Kayıt)</h3>
-                            <button id="exportExcel" class="btn btn-success pull-right">Excel Olarak İndir</button>
+                            <button id="exportExcel" class="btn btn-success pull-right export-btn" data-table="pdksTable">
+                                <i class="fa fa-file-excel-o"></i>Excel Olarak İndir
+                            </button>
                         </div>
                         <div class="box-body table-responsive">
-                            <table id="pdksTable" class="table table-bordered table-striped">
+                            <table id="pdksTable" class="table table-bordered table-striped datatable">
                                 <thead>
                                 <tr>
                                     <th>#</th>
@@ -243,24 +245,5 @@ $start=global_date_to_tr($_POST["start"]);
                 <div class="alert alert-info" style="margin-top: 15px;">Seçtiğiniz kritere uygun veri bulunamamıştır.</div>
             <?php endif; ?>
         <?php endif; ?>
-
-        <script>
-            document.getElementById('exportExcel').addEventListener('click', function() {
-                let table = document.getElementById('pdksTable');
-                let rows = Array.from(table.querySelectorAll('tr'));
-                // Başlıklar ve satır verileri için virgülle ayrılmış CSV oluşturma
-                let csv = rows.map(r => Array.from(r.querySelectorAll('th,td')).map(cell => `"${cell.innerText.replace(/"/g, '""')}"`).join(",")).join("\n");
-
-                let blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); // UTF-8 BOM ekledim
-                let url = URL.createObjectURL(blob);
-
-                let a = document.createElement('a');
-                a.href = url;
-                a.download = 'izin_raporlari.csv';
-                a.click();
-                URL.revokeObjectURL(url);
-            });
-        </script>
-
     </div>
 </section>
