@@ -48,8 +48,23 @@ class HttpDriver implements ServiceDriverInterface
 
         // BODY varsa ekle
         $body = $service['request_body'] ?? $service['body_template'] ?? null;
-        if ($body) {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+
+        if ($service['method'] === 'POST') {
+            // Eğer body yoksa bile cURL'e boş string gönderiyoruz ki Content-Length oluşsun
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body ?? '');
+
+            // Eğer JSON POST ise header ekle
+            if (!empty($service['headers'])) {
+                $jsonHeaders = json_decode($service['headers'], true);
+                if (is_array($jsonHeaders)) {
+                    foreach ($jsonHeaders as $k => $v) {
+                        $headers[] = "$k: $v";
+                    }
+                }
+            } else {
+                // default olarak x-www-form-urlencoded
+                $headers[] = "Content-Type: application/x-www-form-urlencoded";
+            }
         }
 
         $response = curl_exec($ch);

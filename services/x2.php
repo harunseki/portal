@@ -128,12 +128,12 @@ $q = $dba->query("SELECT * FROM services WHERE durum != 5 ORDER BY name");
                     </div>
 
                     <div class="form-group">
-                        <label>Headers JSON</label>
+                        <label>Headers</label>
                         <textarea name="headers" id="headers" class="form-control" rows="3"></textarea>
                     </div>
 
                     <div class="form-group">
-                        <label>Request Body</label>
+                        <label>Body</label>
                         <textarea name="request_body" id="request_body" class="form-control" rows="3"></textarea>
                     </div>
 

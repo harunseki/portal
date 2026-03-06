@@ -160,7 +160,7 @@ foreach ($services as $s) {
                                 <td class="response_time"></td>
                                 <td class="last_checked"></td>
                                 <td>
-                                    <button class="refresh-btn" data-service-id="<?= $service['id'] ?>">
+                                    <button class="refresh-btn" data-service-id="<?= $s['id'] ?>">
                                         ⟳
                                     </button>
                                 </td>
@@ -186,9 +186,9 @@ foreach ($services as $s) {
                                 <td class="response_time"></td>
                                 <td class="last_checked"></td>
                                 <td>
-                                    <button class="refresh-btn" data-service-id="<?= $primary['id'] ?>">
+                                    <!--<button class="refresh-btn" data-service-id="<?php /*= $primary['id'] */?>">
                                         ⟳
-                                    </button>
+                                    </button>-->
                                 </td>
                             </tr>
                             <!-- ALT SATIRLAR -->
@@ -302,14 +302,11 @@ foreach ($services as $s) {
                                                             ⟳
                                                         </button>
                                                     </td> `;
-
                                 child.dataset.loaded = "1";
                             })
                             .catch(err => console.error(err));
                     }
-
                 });
-
             });
         });
 

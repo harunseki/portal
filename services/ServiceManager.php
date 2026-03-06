@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/ServiceDriverInterface.php';
 require_once __DIR__ . '/ServiceDriverFactory.php';
 require_once __DIR__ . '/HttpDriver.php';
@@ -24,7 +23,7 @@ class ServiceManager
             FILE_APPEND
         );
     }
-    public function checkServices()
+    public function checkServices(): void
     {
         $this->log("=== ServiceManager START ===");
 
@@ -101,13 +100,13 @@ class ServiceManager
 
         $this->log("=== ServiceManager END ===");
     }
-    public function checkSingleService(array $service): array
+    public function checkSingleService(array $service, bool $force = false): array
     {
         $serviceId = (int)$service['id'];
         $serviceName = $service['name'] ?? ('ID:' . $serviceId);
-        $updateChecked = true;
+
         // Interval kontrolü
-        if (!$this->shouldCheck($service)) {
+        if (!$force && !$this->shouldCheck($service)) {
             $this->log("Skipped (interval not reached): $serviceName");
             return [
                 'status' => $service['last_status'] ?? false,
@@ -115,12 +114,10 @@ class ServiceManager
                 'last_checked' => $service['last_checked'] ?? null,
                 'skipped' => true
             ];
-
         }
 
         try {
             $this->db->begin_transaction();
-
             TokenManager::ensureValidToken($this->db, $service);
             $driver = ServiceDriverFactory::make($service);
             $result = $driver->check($service);

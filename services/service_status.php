@@ -3,6 +3,7 @@ require "../class/mysql.php";
 require_once __DIR__ . '/autoload.php'; // doğru path ver
 
 $serviceId = (int)($_GET['id'] ?? 0);
+$refresh = isset($_GET['refresh']) && $_GET['refresh'] == 1;
 if (!$serviceId) {
     http_response_code(400);
     echo json_encode(['status'=>false,'error'=>'Missing service ID']);
@@ -18,7 +19,7 @@ if (!$service) {
 
 $manager = new ServiceManager($dba);
 try {
-    $result = $manager->checkSingleService($service);
+    $result = $manager->checkSingleService($service, $refresh);
 } catch (Throwable $e) {
     $result = ['status'=>false,'response_time'=>0,'error'=>$e->getMessage()];
 }
