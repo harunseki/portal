@@ -9,13 +9,21 @@ $modul = $stmt->get_result()->fetch_assoc();
 $kategoriler = $dba->query("SELECT id, baslik FROM mod_kategori ORDER BY siralama");
 
 $izinli_iframe_sessionlar = [];
-
 $q = $dba->query("SELECT id, session_key, aciklama FROM session_parameters WHERE aktif = 1 ");
 
 while ($r = $q->fetch_assoc()) {
     $izinli_iframe_sessionlar[] = $r;
 }
+
+$ust_mudurlukler = [];
+$q = $dba->query("SELECT id, mudurluk FROM mudurlukler WHERE durum=1 ORDER BY mudurluk");
+
+while ($r = $q->fetch_assoc()) {
+    $ust_mudurlukler[] = $r;
+}
 ?>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <section class="content-header">
     <h2>Modül Düzenle</h2>
 </section>
@@ -111,6 +119,32 @@ while ($r = $q->fetch_assoc()) {
                                 </div>
                             </div>
                             <div class="row">
+                                <div class="form-group col-md-6">
+                                    <label>Üst Müdürlük</label>
+                                    <select name="ust_mudurluk_id" id="ust_mudurluk_id" class="form-control select2">
+                                        <option value="">Seçiniz...</option>
+                                        <?php foreach($ust_mudurlukler as $u): ?>
+                                            <option value="<?= $u['id'] ?>">
+                                                <?= htmlspecialchars($u['mudurluk']) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label>Müdürlük</label>
+                                    <select name="mudurluk_id[]" id="mudurluk_id" class="form-control select2" multiple>
+                                        <?php foreach($ust_mudurlukler as $u): ?>
+                                            <option value="<?= $u['id'] ?>">
+                                                <?= htmlspecialchars($u['mudurluk']) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <small class="text-muted">
+                                        Birden fazla müdürlük seçebilirsiniz
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="row">
                                 <div class="form-group col-md-4">
                                     <label>İkon(fa fa-*)</label>
                                     <input type="text" name="ikon" id="ikon" class="form-control">
@@ -188,8 +222,19 @@ while ($r = $q->fetch_assoc()) {
     </div>
 </section>
 <script>
+    $(document).ready(function(){
+
+        $('.select2').select2({
+            placeholder: "Müdürlük seçiniz",
+            allowClear: true,
+            closeOnSelect:false,
+            width: '100%'
+        });
+
+    });
     /** Yeni Modül **/
     function yeniModul() {
+        $('#mudurluk_id').val(null).trigger('change');
         $('#modulForm')[0].reset();
         $('#modul_id').val('');
 
@@ -232,6 +277,17 @@ while ($r = $q->fetch_assoc()) {
                 $('#hedef_url').val(m.hedef_url);
                 $('#style').val(m.style);
 
+                if (m.ust_mudurluk_id) {
+                    $('#ust_mudurluk_id').val(m.ust_mudurluk_id).trigger('change');
+                } else {
+                    $('#ust_mudurluk_id').val(null).trigger('change');
+                }
+                if(m.mudurluk_id) {
+                    let secili = m.mudurluk_id.split(',');
+                    $('#mudurluk_id').val(secili).trigger('change');
+                }else {
+                    $('#mudurluk_id').val(null).trigger('change');
+                }
                 // 🔥 ÖNCE tip kontrolü
                 modulTipiKontrol();
 
@@ -310,5 +366,4 @@ while ($r = $q->fetch_assoc()) {
     $('#modul_tipi').on('change', function () {
         modulTipiKontrol();
     });
-
 </script>

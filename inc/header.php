@@ -23,7 +23,7 @@ if (strpos($remoteUser, "\\") !== false) {
 
 if ($_SERVER['REMOTE_ADDR']=="10.2.200.79") {
     $admin = 1;
-        /*$ldap_username ="sibelkoksal";*/
+    /*$ldap_username ="emirozturk";*/
 }
 
 $sessionTimeout = 1800; // 30 dakika

@@ -3,43 +3,18 @@ $YENI_GUN = 7;
 $now = new DateTime();
 $kategoriler = [];
 
-$sql = "SELECT 
-    k.id AS kategori_id,
-    k.kod,
-    k.baslik,
-    k.renk,
-    k.collapse,
-
-    m.id AS mod_id,
-    m.isim AS mod_isim,
-    m.label,
-    m.ikon,
-    m.hedef_url,
-    m.yetki,
-    m.kayit_tarihi,
-    m.modul_tipi,
-    m.parametreler,
-
-    COALESCE(uc.user_count, 0) AS user_count
-
-FROM mod_kategori k
-
-LEFT JOIN mod_moduller m 
-    ON m.kategori_id = k.id
-
-LEFT JOIN (
-    SELECT 
-        yetki_key,
-        COUNT(*) AS user_count
-    FROM yetkili_moduller
-    WHERE deger = 1
-    GROUP BY yetki_key
-) uc 
-    ON uc.yetki_key = m.id
-
-WHERE m.aktif = 1
-
-ORDER BY k.baslik, m.isim
+$sql = "SELECT  k.id AS kategori_id, k.kod, k.baslik, k.renk, k.collapse, m.id AS mod_id, m.isim AS mod_isim, m.label, m.ikon, m.hedef_url, m.yetki, m.kayit_tarihi, m.modul_tipi, m.parametreler, COALESCE(uc.user_count, 0) AS user_count
+        FROM mod_kategori k
+        LEFT JOIN mod_moduller m ON m.kategori_id = k.id
+        LEFT JOIN (
+            SELECT yetki_key, COUNT(*) AS user_count FROM yetkili_moduller ym
+            JOIN yetkili y ON y.id = ym.kullanici_id
+            WHERE deger = 1
+            GROUP BY yetki_key
+        ) uc 
+            ON uc.yetki_key = m.id
+        WHERE m.aktif = 1
+        ORDER BY k.baslik, m.isim
 ";
 $result = $dba->query($sql);
 
@@ -134,12 +109,46 @@ while ($row = $result->fetch_assoc()) {
         justify-content: space-between;
         color: #666;
     }
-    .modul-detay {
-        cursor: pointer;
-    }
+    .modul-detay{
+        position:absolute;
+        bottom:8px;
+        right:10px;
 
-    .modul-detay:hover {
-        color: #000;
+        display:flex;
+        align-items:center;
+        gap:4px;
+
+        font-size:12px;
+        padding:3px 7px;
+
+        border-radius:6px;
+        background:#f4f6f9;
+        color:#666;
+
+        cursor:pointer;
+        transition:all .25s ease;
+    }
+    /* hover efekti */
+    .modul-detay:hover{
+        background: #098512;
+        color:#fff;
+        transform:translateY(-2px);
+        box-shadow:0 3px 8px rgba(0,0,0,.15);
+    }
+    /* ikon animasyonu */
+    .modul-detay i{
+        transition:transform .25s ease;
+    }
+    .modul-detay:hover i{
+        transform:scale(1.15);
+    }
+    /* kullanıcı sayısı */
+    .modul-detay .user-count{
+        font-weight:600;
+    }
+    /* modül hover olunca daha görünür olsun */
+    .modul-kutu:hover .modul-detay{
+        opacity:1;
     }
 </style>
 <section class="content-header clearfix">
@@ -192,8 +201,9 @@ while ($row = $result->fetch_assoc()) {
                         <h4 style="margin-bottom:0"><?= $m['isim'] ?></h4>
                         <?php if ($_SESSION['admin'] == 1): ?>
                         <div class="modul-meta">
-                            <span class="modul-detay" onclick="event.stopPropagation(); openModulDetay(<?= $m['id'] ?>)">
-                                <i class="fa fa-users"></i> <?= $m['user_count'] ?>
+                            <span class="modul-detay" data-toggle="tooltip" data-placement="top" data-container="body" title="Bu modülü kullanan kişileri görüntüle"
+                                  onclick="event.stopPropagation(); openModulDetay(<?= (int)$m['id'] ?>)">
+                                  <i class="fa fa-users"></i> <span class="user-count"><?= (int)$m['user_count'] ?></span>
                             </span>
                         </div>
                         <?php endif; ?>
@@ -227,4 +237,7 @@ while ($row = $result->fetch_assoc()) {
             $('#modulDetayBody').html(data);
         });
     }
+    $(function () {
+        $('[data-toggle="tooltip"]').tooltip();
+    });
 </script>
